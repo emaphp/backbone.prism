@@ -1,5 +1,3 @@
-    *** WORK IN PROGRESS ***
-
 # Backbone.Prism
 Flux-like architecture for Backbone.js
 
@@ -9,7 +7,7 @@ Flux-like architecture for Backbone.js
 <br/>
 Backbone.Prism is a *Backbone.js* extension that provides additional components for implementing a [Flux](https://facebook.github.io/flux/ "")-like architecture that combines [Backbone.js](http://backbonejs.org/ "") and [React](https://facebook.github.io/react/ "").
 
-![Backbone.Prism](http://drive.google.com/uc?export=view&id=)
+![Backbone.Prism](http://drive.google.com/uc?export=view&id=0B3PWnBYHw7RQUVdlUkVVZ21lNm8)
 
 
 <br/>
@@ -80,7 +78,7 @@ store.register(dispatcher, {
 ###StoreView
 
 <br/>
-Instead of messing around with stores we create a *store view*, a small collection-type instance that listens for changes in the original store. This store view is responsible for keeping its data up-to-date and inform the React component when something changes.
+Mutability is a b\*tch, so instead of messing around with stores we create a *store view*, a small collection-type instance that listens for changes in the original store. A store view is responsible for keeping its data up-to-date and inform the components when something changes.
 
 <br/>
 ```javascript
@@ -114,7 +112,7 @@ var MainList = React.createClass({
         };
         
         return (
-            <ul key={'mainList'}>{this.state.view.map(renderer)}</ul>
+            <ul>{this.state.view.map(renderer)}</ul>
         );
     }
 });
@@ -200,6 +198,7 @@ module.exports = TaskForm;
 <br/>
 Components including the *Prism.ViewMixin* can generate a custom state by implementing the *transform* method. This method receives the view instance and returns an object containing the desired state. Transformations are pretty useful for things like counters.
 
+<br/>
 ```javascript
 var React = require('react');
 var Prism = require('backbone.prism');
@@ -227,13 +226,154 @@ module.exports = Counter;
 ###Mutators
 
 <br/>
-Mutators are objects that can modify how a *StoreView* is generated from a store instance. Their main purpose is being able to apply filters and comparators to a set of models.
+Mutators are objects that can modify how a *StoreView* is generated from a *Store* instance. Their main purpose is being able to apply filters and comparators to a set of models. This is done by setting the view options appropriately. A store view instance contains the following options:
+
+<br/>
+ * **offset**: The amount of models to skip from the beginning of the list.
+ * **size**: The amount of models to obtain. When negative, models will be taken from the end of the list.
+ * **comparator**: A comparator function/field.
+ * **filter**: The default filter.
+ * **filters**: An object containing a list of additional filters.
+
+<br/>
+These options could be defined when initializing a view. The following example shows a view having a capacity of 5 models ordered by priority.
+
+```javascript
+var store = require('./store');
+
+var view = store.createView({
+    size: 5,
+    comparator: 'priority'
+});
+
+module.exports = view;
+```
+
+<br/>
+Mutators are generated within components and allow changing those options during runtime. A mutator is created by invoking the *createMutator* method. This method expects a callback and a component instance. The callback must return an object that later will be merged with the store options object.
+
+```javascript
+var React = require('react');
+
+var Paginator = React.createClass({
+    getInitialState: function () {
+        return {
+            page: 1
+        };
+    },
+
+    componentDidMount: function () {
+        var view = this.props.view;
+        
+        this.pager = view.createMutator(function () {
+            var page = this.state.page;
+            var pageSize = this.props.pageSize;
+            
+            // Set view bounds
+            return {
+                offset: pageSize * (page - 1),
+                size: pageSize
+            };
+        }, this);
+    },
+    
+    componentWillUnmount: function () {
+        this.pager.destroy();
+    },
+    
+    render: function () {
+        // ...
+    }
+});
+
+module.exports = Paginator;
+```
+
+<br/>
+
+When a component takes a state that must trigger a mutator, we provide an additional argument to *setState* using the callback returned by the mutator *update* method. This method returns a function that will call the corresponding callback using the current component as the context. Right after that the mutator will trigger an *apply* event that will refresh the view contents.
+
+```javascript
+handleClick: function () {
+    this.setState({page: 2}, this.pager.update());
+}
+```
+
+<br/>
+What if the component uses the *Prism.ViewMixin*? Wouldn't that produce a double render? In some cases it does. In order to prevent this we can use the *applyState* method that doesn't produces a refresh and then run the mutator by hand.
+
+```javascript
+handleClick: function () {
+    this.applyState({page: 2});
+    this.pager.apply();
+}
+```
+
+<br/>
+### Channels
+
+<br/>
+*Prism* uses [Backbone.Radio](https://github.com/marionettejs/backbone.radio "") to turn views into full featured application channels. By including the *Backbone.Radio.Commands* and *Backbone.Radio.Requests* mixins, views can send commands and requests between components.
+
+<br/>
+```javascript
+var React = require('react');
+var Prism = require('backbone.prism');
+
+var Paginator = React.createClass({
+    mixins: [Prism.ViewMixin],
+
+    getInitialState: function () {
+        return {
+            page: 1
+        };
+    },
+
+    componentDidMount: function () {
+        var view = this.props.view;
+
+        this.paginator = view.createMutator(function () {
+            var page = this.state.page;
+            var pageSize = this.props.pageSize;
+
+            return {
+                offset: pageSize * (page - 1),
+                size: pageSize
+            };
+        }, this);
+
+        // Reset page number when requested
+        view.comply('page:reset', (function () {
+            this.applyState({page: 1});
+            this.paginator.apply(true); // don't trigger any event, wait for view 'sync'
+        }).bind(this));
+        
+        // Return current page
+        view.reply('page:get', (function () {
+            return this.state.page
+        }).bind(this));
+    },
+    
+    // ...
+});
+
+module.exports = Paginator;
+```
+
+<br/>
+```javascript
+// Reset page
+view.command('page:reset');
+
+// Get current page
+var page = view.request('page:get');
+```
 
 <br/>
 ###Demos
 
 <br/>
- * Backbone-Prism-Todos: The classic Todo app made with Backbone.Prism (Link).
+ * Backbone-Prism-Todos: The classic Todo app made with Backbone.Prism ([Link](https://backbone-prism-todos.herokuapp.com "")).
 
 <br/>
 ###License
