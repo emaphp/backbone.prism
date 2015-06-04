@@ -1,0 +1,35 @@
+{
+  "name": "backbone.prism",
+  "version": "1.0.0",
+  "homepage": "https://github.com/emaphp/backbone.prism",
+  "authors": [
+    "Emmanuel Antico <emmanuel.antico@gmail.com>"
+  ],
+  "description": "Flux-like architecture for Backbone.js",
+  "main": "dist/backbone.prism.js",
+  "moduleType": [
+    "amd",
+    "globals",
+    "node"
+  ],
+  "keywords": [
+    "backbone",
+    "flux",
+    "react",
+    "prism"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "backbone": "1.1.2",
+    "flux": "2.0.2",
+    "underscore": "1.7.0",
+    "backbone.radio": "0.9.0"
+  }
+}
