@@ -7,7 +7,7 @@
 //
 (function(global, factory) {
     if (typeof define === 'function' && define.amd) {
-        define(['backbone', 'underscore', 'flux', 'backbone.radio'], function(Backbone, _, Flux) {
+        define(['backbone', 'underscore', 'flux', 'backbone.radio'], function (Backbone, _, Flux) {
             return factory(global, Backbone, _, Flux);
         });
     } else if (typeof exports !== 'undefined') {
@@ -54,7 +54,7 @@
     
     // Registers a list of actions in a dispatcher instance
     var register = function (dispatcher, actions) {
-        dispatcher.register((function(payload) {
+        dispatcher.register((function (payload) {
             var source = payload.source;
             var action = payload.action;
             var type = action.type;
@@ -148,22 +148,20 @@
             this.callback = callback;
             
             // On start, apply changes to view but don't trigger an event
-            parent.on('start', this.update(null, true));
+            parent.on('start', this.apply(true));
         },
         
         // Applies modifications to a view instance
-        // If required, an additional state argument can be supplied
-        apply: function (state) {
-            if (state) _.extend(this.context.state, state); // Merge state
+        apply: function (silent) {
             _.extend(this.parent.options, this.callback.call(this.context));
+            if (silent === true) return;
+            this.trigger('apply');
         },
         
-        // Returns a function that applies a set of changes to a view
-        update: function (state, silent) {
+        // Returns a callback that applies the current mutator
+        update: function (silent) {
             return (function () {
-                this.apply(state);
-                if (silent === true) return; // If silent, don't trigger any event
-                this.trigger('apply', state);
+                this.apply(silent);
             }).bind(this);
         }
     });
@@ -177,8 +175,10 @@
     // view comparator.
     
     var ViewComparator = ViewMutator.extend({
-        apply: function () {
+        apply: function (silent) {
             _.extend(this.parent.options, {comparator: this.callback.call(this.context)});
+            if (silent === true) return;
+            this.trigger('apply');
         },
     });
     
@@ -191,9 +191,11 @@
     // associated filter.
     
     var ViewFilter = ViewMutator.extend({
-        apply: function () {
+        apply: function (silent) {
             this.parent.options.filters = this.parent.options.filters || {};
             this.parent.options.filters[this.cid] = this.callback.call(this.context);
+            if (silent === true) return;
+            this.trigger('apply');
         }
     });
     
@@ -515,6 +517,7 @@
     
     Prism.ViewMixin = _.extend({
         getInitialState: function () {
+            // Apply transformation if defined
             if (_.isFunction(this.transform)) {
                 return this.transform(this.props.view);
             }
@@ -525,6 +528,7 @@
         },
         
         componentDidMount: function () {
+            // Update state when view changes
             this.listenTo(this.props.view, 'sync', function () {
                 this.setState(_.isFunction(this.transform) ? this.transform(this.props.view) : {
                     view: this.props.view.toJSON()
@@ -534,6 +538,11 @@
         
         componentWillUnmount: function () {
             this.stopListening(this.props.view, 'sync');
+        },
+        
+        // Applies a new state without refreshing
+        applyState: function (state) {
+            _.extend(this.state, state);
         }
     }, Backbone.Events);
 
