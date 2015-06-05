@@ -9,6 +9,19 @@ Backbone.Prism is a *Backbone.js* extension that provides additional components 
 
 ![Backbone.Prism](http://drive.google.com/uc?export=view&id=0B3PWnBYHw7RQUVdlUkVVZ21lNm8)
 
+<br/>
+###Installation
+
+<br/>
+###### Bower
+
+> bower install backbone.prism --save
+
+<br/>
+###### NPM
+
+> npm install backbone.prism --save
+
 
 <br/>
 ###Store
@@ -21,12 +34,10 @@ According to the designers of Flux, a Store *"contains the application state and
 var Backbone = require('backbone');
 var Prism = require('backbone.prism');
 
-// Our model
 var Task = Backbone.Model.extend({
     urlRoot: '/tasks'
 });
 
-// Our Store class
 var Store = Prism.Store.extend({
     name: 'tasks', // Identifier
     model: Task,
@@ -93,7 +104,7 @@ module.exports = mainView;
 ```
 
 <br/>
-*Prism* also provides a simple mixin for rendering instances of *Prism.Store* and *Prism.State*. Any component including this mixin will expect a *view* property containing a *Prism.StoreView* or *Prism.State* instance.
+*Prism* also provides a simple mixin for rendering instances of *Prism.Store* and *Prism.State*. Any component including this mixin will expect a *view* property containing a *Prism.StoreView* or *Prism.StateView* instance.
 
 <br/>
 ```javascript
@@ -121,7 +132,7 @@ module.exports = MainList;
 ```
 
 <br/>
-The *view* property is then used to generate an object array in *this.state.view* containing a JSON representation of that view. The component will listen for any *sync* event in the view and update accordingly.
+The *view* property is then used to generate an object array in *state.view* containing a JSON representation of that view. The component will listen for any *sync* event in the view and update accordingly.
 
 <br/>
 ```javascript
@@ -136,7 +147,7 @@ React.render(<MainList view={mainView}/>, document.getElementById('app'));
 ###Mixins
 
 <br/>
-Mixins encapsulate logic that can be shared across a wide number of components. They are the preferred approach for adding interaction between a component and a dispatcher.
+Mixins encapsulate logic that can be shared across a wide number of components. They are the preferred approach for adding interaction between a component and the dispatcher.
 
 <br/>
 ```javascript
@@ -166,11 +177,12 @@ module.exports = {
 
 <br/>
 ```javascript
-// File TaskForm.js
+// File TaskForm.jsx
 var React = require('react');
+var TasksMixin = require('./TasksMixin');
 
 var TaskForm = React.createClass({
-    mixins: [require('./TasksMixin')],
+    mixins: [TasksMixin],
     
     handleAddItem: function(e) {
         e.preventDefault();
@@ -226,7 +238,7 @@ module.exports = Counter;
 ###Mutators
 
 <br/>
-Mutators are objects that can modify how a *StoreView* is generated from a *Store* instance. Their main purpose is being able to apply filters and comparators to a set of models. This is done by setting the view options appropriately. A store view instance contains the following options:
+Mutators are objects that can modify how a *StoreView* is generated from a *Store*. Their main purpose is being able to apply filters and comparators to a set of models by setting the view options appropriately. A store view supports the following list of options:
 
 <br/>
  * **offset**: The amount of models to skip from the beginning of the list.
@@ -238,6 +250,7 @@ Mutators are objects that can modify how a *StoreView* is generated from a *Stor
 <br/>
 These options could be defined when initializing a view. The following example shows a view having a capacity of 5 models ordered by priority.
 
+<br/>
 ```javascript
 var store = require('./store');
 
@@ -250,8 +263,9 @@ module.exports = view;
 ```
 
 <br/>
-Mutators are generated within components and allow changing those options during runtime. A mutator is created by invoking the *createMutator* method. This method expects a callback and a component instance. The callback must return an object that later will be merged with the store options object.
+Mutators are generated within components and allow us to change those options during runtime. A mutator is created by invoking the *createMutator* method. This method expects a callback and a component instance. The callback must return an object that later will be merged with the store's options object.
 
+<br/>
 ```javascript
 var React = require('react');
 
@@ -290,9 +304,9 @@ module.exports = Paginator;
 ```
 
 <br/>
+In order to refresh the view's content, we provide an additional argument to *setState* using the callback returned by the mutator's *update* method. This method returns a function that will call the corresponding callback using the current component as the context. The mutator will then trigger an *apply* event that will refresh the view.
 
-When a component takes a state that must trigger a mutator, we provide an additional argument to *setState* using the callback returned by the mutator *update* method. This method returns a function that will call the corresponding callback using the current component as the context. Right after that the mutator will trigger an *apply* event that will refresh the view contents.
-
+<br/>
 ```javascript
 handleClick: function () {
     this.setState({page: 2}, this.pager.update());
@@ -300,13 +314,94 @@ handleClick: function () {
 ```
 
 <br/>
-What if the component uses the *Prism.ViewMixin*? Wouldn't that produce a double render? In some cases it does. In order to prevent this we can use the *applyState* method that doesn't produces a refresh and then run the mutator by hand.
+What if the component uses the *Prism.ViewMixin*? Wouldn't that produce a double render? That could happen if a component includes *ViewMixin* and the view being modified by the mutator is the same that is being received as a property. In order to prevent this we can use the *applyState* method and then run the mutator by hand.
 
+<br/>
 ```javascript
 handleClick: function () {
-    this.applyState({page: 2});
-    this.pager.apply();
+    this.applyState({page: 2}); // merge state without triggering render
+    this.pager.apply();         // apply mutator and trigger an 'apply'
 }
+```
+
+<br/>
+### Comparators and Filters
+
+<br/>
+Comparators and filters extend the *Prism.Mutator* class allowing an easier way to apply changes to a view. Comparators are created through the *createComparator* method. This method receives a callback returning a comparator function.
+
+<br/>
+```javascript
+var React = require('react');
+
+var OrderBar = React.createClass({
+    getInitialState: function () {
+        return {
+            field: 'priority'
+        };
+    },
+
+    componentDidMount: function () {
+        var view = this.props.view;
+
+        this.comparator = view.createComparator(function () {
+            var field = this.state.field;
+
+            return function (model1, model2) {
+                if (field == 'description') {
+                    return model2.get(field) < model1.get(field);
+                }
+
+                return model2.get(field) > model1.get(field);
+            };
+        }, this);
+    },
+
+    componentWillUnmount: function () {
+        this.comparator.destroy();
+    },
+    
+    // ...
+});
+
+module.exports = OrderBar;
+```
+
+<br/>
+Filters, unsurprisingly, are created through the *createFilter* method. The associated callback must return a function receiving a single model as argument.
+
+<br/>
+```javascript
+var React = require('react');
+var Prism = require('backbone.prism');
+
+var StatusFilter = React.createClass({
+    mixins: [Prism.ViewMixin],
+    
+    componentDidMount: function () {
+        var view = this.props.mainView;
+
+        this.filter = view.createFilter(function () {
+            var filter = this.state.selected;
+
+            return function (model) {
+                switch (filter) {
+                    case 'all': return true;
+                    case 'active': return !model.get('closed');
+                    case 'closed': return model.get('closed');
+                }
+            };
+        }, this);
+    },
+    
+    componentWillUnmount: function () {
+        this.filter.destroy();
+    },
+    
+    // ...
+});
+
+module.exports = StatusFilter;
 ```
 
 <br/>
@@ -350,7 +445,7 @@ var Paginator = React.createClass({
         
         // Return current page
         view.reply('page:get', (function () {
-            return this.state.page
+            return this.state.page;
         }).bind(this));
     },
     
