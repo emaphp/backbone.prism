@@ -7,7 +7,7 @@ Flux-like architecture for Backbone.js
 <br/>
 Backbone.Prism is a *Backbone.js* extension that provides additional components for implementing a [Flux](https://facebook.github.io/flux/ "")-like architecture that combines [Backbone.js](http://backbonejs.org/ "") and [React](https://facebook.github.io/react/ "").
 
-![Backbone.Prism](http://drive.google.com/uc?export=view&id=0B3PWnBYHw7RQUVdlUkVVZ21lNm8)
+![Backbone.Prism](http://drive.google.com/uc?export=view&id=0B3PWnBYHw7RQRDRyTnh2UWF2Zk0)
 
 <br/>
 ###Installation
