@@ -390,11 +390,12 @@
     // A Prism.StoreView instance keeps track of a Prism.Store object.
 
     function StoreView (store, options) {
-        this.store = store;
+        this.parent = store;
         this.models = [];
         this.length = 0;
         this._isInitialized = false;
         this.options = _.extend({}, _.result(this, 'options'), options);
+        this.options.listenTo = this.options.listenTo || 'add remove change reset';
         
         // Initialize with parent store
         this.listenTo(store, 'start', function () {
@@ -416,7 +417,7 @@
         
         // Synchronizes models against the store
         sync: function () {
-            this.models = _.clone(this.store.models);
+            this.models = _.clone(this.parent.models);
             
             // Apply default filter
             if (this.options.filter) {
@@ -601,8 +602,9 @@
         },
         
         // Merges states without refreshing
-        mergeState: function (state) {
+        mergeState: function (state, callback) {
             _.extend(this.state, state);
+            if (callback) callback();
         }
     }, Backbone.Events);
 

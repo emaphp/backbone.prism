@@ -5,7 +5,7 @@ Flux-like architecture for Backbone.js
 ###About
 
 <br/>
-Backbone.Prism is a *Backbone.js* extension that provides additional components for implementing a [Flux](https://facebook.github.io/flux/ "")-like architecture that combines [Backbone.js](http://backbonejs.org/ "") and [React](https://facebook.github.io/react/ "").
+Backbone.Prism is a *Backbone.js* extension that provides additional classes for implementing a [Flux](https://facebook.github.io/flux/ "")-like architecture that combines [Backbone.js](http://backbonejs.org/ "") and [React](https://facebook.github.io/react/ "").
 
 ![Backbone.Prism](http://drive.google.com/uc?export=view&id=0B3PWnBYHw7RQRDRyTnh2UWF2Zk0)
 
@@ -184,6 +184,12 @@ var TasksActions = require('./TasksActions');
 var TaskForm = React.createClass({
     mixins: [TasksActions],
     
+    getInitialState: function () {
+        return {
+            description: ''
+        };
+    },
+    
     handleAddItem: function(e) {
         e.preventDefault();
     
@@ -291,7 +297,7 @@ var Paginator = React.createClass({
             };
         }, this);
     },
-    
+
     componentWillUnmount: function () {
         this.pager.destroy();
     },
@@ -309,19 +315,19 @@ In order to refresh the view's content, we provide an additional argument to *se
 
 <br/>
 ```javascript
-handleClick: function () {
-    this.setState({page: 2}, this.pager.update());
+handlePageChange: function (page) {
+    this.setState({page: page}, this.pager.update());
 }
 ```
 
 <br/>
-What if the component uses the *Prism.ViewMixin*? Wouldn't that produce a double render? That could happen if a component includes *ViewMixin* and the view being modified by the mutator is the same that is being received as a property. In order to prevent this we can use the *mergeState* method and then run the mutator by hand.
+What if the component uses the *Prism.ViewMixin*? Wouldn't that produce a double render? That could happen if a component includes *ViewMixin* and the view being modified by the mutator is the same that is being received as a property. In order to prevent this we can use the *mergeState* method.
 
 <br/>
 ```javascript
 handleClick: function () {
-    this.mergeState({page: 2}); // merge state without triggering render
-    this.pager.apply();         // apply mutator and trigger an 'apply'
+    // merge state without triggering render
+    this.mergeState({page: 2}, this.pager.update());
 }
 ```
 
@@ -410,8 +416,6 @@ module.exports = StatusFilter;
 
 <br/>
 > *Don't communicate by sharing state. Share state by communicating.*
-><br/>
->**Rob Pike**
 
 <br/>
 *Prism* includes [Backbone.Radio](https://github.com/marionettejs/backbone.radio "") (an extension mantained by the [Marionette.js](http://marionettejs.com/ "") team) and introduces the *Prism.Channel* class, a class featuring a full messaging API that can be used to communicate state between components. This example shows the implementation of a component using a channel to synchronize their state.
@@ -421,6 +425,8 @@ module.exports = StatusFilter;
 var React = require('react');
 var Prism = require('backbone.prism');
 var store = require('./store');
+var SomeComponent = require('./SomeComponent.jsx');
+var AnotherComponent = require('./AnotherComponent.jsx');
 
 var ParentComponent = React.createClass({
     getDefaultProps: function () {
@@ -433,8 +439,7 @@ var ParentComponent = React.createClass({
         return (
             <div className="container">
                 <SomeComponent channel={this.props.channel} />
-                <AnotherComponent />
-                <ThirdComponent channel={this.props.channel} />
+                <AnotherComponent channel={this.props.channel} />
             </div>
         );
     }
@@ -485,7 +490,7 @@ The listener component defines a receiver callback using the *comply* method. Bo
 ```javascript
 var React = require('react');
 
-var ThirdComponent = React.createClass({
+var AnotherComponent = React.createClass({
     getInitialState: function () {
         return {
             clicked: 0
@@ -505,7 +510,7 @@ var ThirdComponent = React.createClass({
     }
 });
 
-module.exports = ThirdComponent;
+module.exports = AnotherComponent;
 ```
 
 
