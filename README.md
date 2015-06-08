@@ -13,12 +13,12 @@ Backbone.Prism is a *Backbone.js* extension that provides additional components 
 ###Installation
 
 <br/>
-###### Bower
+##### Bower
 
 > bower install backbone.prism --save
 
 <br/>
-###### NPM
+##### npm
 
 > npm install backbone.prism --save
 
@@ -151,7 +151,7 @@ Mixins encapsulate logic that can be shared across a wide number of components. 
 
 <br/>
 ```javascript
-// File: TasksMixin.js
+// File: TasksActions.js
 var dispatcher = require('../dispatcher');
 
 module.exports = {
@@ -179,10 +179,10 @@ module.exports = {
 ```javascript
 // File TaskForm.jsx
 var React = require('react');
-var TasksMixin = require('./TasksMixin');
+var TasksActions = require('./TasksActions');
 
 var TaskForm = React.createClass({
-    mixins: [TasksMixin],
+    mixins: [TasksActions],
     
     handleAddItem: function(e) {
         e.preventDefault();
@@ -238,7 +238,7 @@ module.exports = Counter;
 ###Mutators
 
 <br/>
-Mutators are objects that can modify how a *StoreView* is generated from a *Store*. Their main purpose is being able to apply filters and comparators to a set of models by setting the view options appropriately. A store view supports the following list of options:
+Mutators are objects that can modify how a *StoreView* is generated from a *Store*. Their main purpose is being able to apply filters and comparators to a set of models by setting the view configuration appropriately. A store view supports the following list of options:
 
 <br/>
  * **offset**: The amount of models to skip from the beginning of the list.
@@ -256,6 +256,7 @@ var store = require('./store');
 
 var view = store.createView({
     size: 5,
+    
     comparator: 'priority'
 });
 
@@ -263,7 +264,7 @@ module.exports = view;
 ```
 
 <br/>
-Mutators are generated within components and allow us to change those options during runtime. A mutator is created by invoking the *createMutator* method. This method expects a callback and a component instance. The callback must return an object that later will be merged with the store's options object.
+Mutators are generated within components and allow us to change those options during runtime. A mutator is created by invoking the *createMutator* method. This method expects a callback and a component instance. The callback is executed using the component instance as its context and must return a list of options that are later merged into the view.
 
 <br/>
 ```javascript
@@ -314,12 +315,12 @@ handleClick: function () {
 ```
 
 <br/>
-What if the component uses the *Prism.ViewMixin*? Wouldn't that produce a double render? That could happen if a component includes *ViewMixin* and the view being modified by the mutator is the same that is being received as a property. In order to prevent this we can use the *applyState* method and then run the mutator by hand.
+What if the component uses the *Prism.ViewMixin*? Wouldn't that produce a double render? That could happen if a component includes *ViewMixin* and the view being modified by the mutator is the same that is being received as a property. In order to prevent this we can use the *mergeState* method and then run the mutator by hand.
 
 <br/>
 ```javascript
 handleClick: function () {
-    this.applyState({page: 2}); // merge state without triggering render
+    this.mergeState({page: 2}); // merge state without triggering render
     this.pager.apply();         // apply mutator and trigger an 'apply'
 }
 ```
@@ -408,61 +409,105 @@ module.exports = StatusFilter;
 ### Channels
 
 <br/>
-*Prism* uses [Backbone.Radio](https://github.com/marionettejs/backbone.radio "") to turn views into full featured application channels. By including the *Backbone.Radio.Commands* and *Backbone.Radio.Requests* mixins, views can send commands and requests between components.
+> *Don't communicate by sharing state. Share state by communicating.*
+><br/>
+>**Rob Pike**
+
+<br/>
+*Prism* includes [Backbone.Radio](https://github.com/marionettejs/backbone.radio "") (an extension mantained by the [Marionette.js](http://marionettejs.com/ "") team) and introduces the *Prism.Channel* class, a class featuring a full messaging API that can be used to communicate state between components. This example shows the implementation of a component using a channel to synchronize their state.
 
 <br/>
 ```javascript
 var React = require('react');
 var Prism = require('backbone.prism');
+var store = require('./store');
 
-var Paginator = React.createClass({
-    mixins: [Prism.ViewMixin],
-
-    getInitialState: function () {
+var ParentComponent = React.createClass({
+    getDefaultProps: function () {
         return {
-            page: 1
+            channel: new Prism.Channel() // Initialize channel instance
         };
     },
-
-    componentDidMount: function () {
-        var view = this.props.view;
-
-        this.paginator = view.createMutator(function () {
-            var page = this.state.page;
-            var pageSize = this.props.pageSize;
-
-            return {
-                offset: pageSize * (page - 1),
-                size: pageSize
-            };
-        }, this);
-
-        // Reset page number when requested
-        view.comply('page:reset', (function () {
-            this.applyState({page: 1});
-            this.paginator.apply(true); // don't trigger any event, wait for view 'sync'
-        }).bind(this));
-        
-        // Return current page
-        view.reply('page:get', (function () {
-            return this.state.page;
-        }).bind(this));
-    },
     
-    // ...
+    render: function () {
+        return (
+            <div className="container">
+                <SomeComponent channel={this.props.channel} />
+                <AnotherComponent />
+                <ThirdComponent channel={this.props.channel} />
+            </div>
+        );
+    }
 });
 
-module.exports = Paginator;
+module.exports = ParentComponent;
 ```
 
 <br/>
-```javascript
-// Reset page
-view.command('page:reset');
+Whenever a new state is applied we communicate it to the listener component. In this case we use the *command* method to send the amount of clicks registered.
 
-// Get current page
-var page = view.request('page:get');
+
+<br/>
+```javascript
+var React = require('react');
+
+var SomeComponent = React.createClass({
+    getInitialState: function () {
+        return {
+            clicked: 0
+        };
+    },
+    
+    handleClick: function (e) {
+        e.preventDefault();
+        
+        var channel = this.props.channel;
+        var clicked = this.state.clicked + 1;
+        this.setState({clicked: clicked}, (function () {
+            channel.command('update:clicked', this.state.clicked);
+        }).bind(this));
+    },
+    
+    render: function () {
+        return (
+            <button onClick={this.handleClick}>Click me</button>
+        );
+    }
+});
+
+module.exports = SomeComponent;
 ```
+
+<br/>
+The listener component defines a receiver callback using the *comply* method. Both *command* and *comply* are implemented in *Backbone.Radio.Commands*.
+
+<br/>
+```javascript
+var React = require('react');
+
+var ThirdComponent = React.createClass({
+    getInitialState: function () {
+        return {
+            clicked: 0
+        };
+    },
+    
+    componentDidMount: function () {
+        this.props.channel.comply('update:clicked', (function (clicked) {
+            this.setState({clicked: clicked});
+        }).bind(this));
+    },
+    
+    render: function () {
+        return (
+            <span>Clicks: {this.state.clicked}</span>
+        );
+    }
+});
+
+module.exports = ThirdComponent;
+```
+
 
 <br/>
 ###Demos

@@ -177,7 +177,7 @@
     //
     // Prism.ViewMutator
     // -----------------
-    // A Prism.ViewMutator instance applies changes to a view options object.
+    // A Prism.ViewMutator instance applies changes to a view configuration object.
     
     var ViewMutator =  Prism.Object.extend({
         // Initializes a ViewMutator instance
@@ -188,7 +188,7 @@
             this.callback = callback;
             
             // On start, apply changes to view but don't trigger an event
-            parent.on('start', this.apply(true));
+            parent.on('start', this.update(true));
         },
         
         // Applies modifications to a view instance
@@ -211,7 +211,7 @@
     //
     // Prism.ViewComparator
     // --------------------
-    // The Prism.ViewComparator class modifies a view comparator.
+    // The Prism.ViewComparator class determines the order to apply to a list of models.
     
     var ViewComparator = ViewMutator.extend({
         apply: function (silent) {
@@ -226,7 +226,7 @@
     //
     // Prism.ViewFilter
     // ----------------
-    // The Prism.ViewFilter class modifies a view filter.
+    // The Prism.ViewFilter class determines which models are removed from a view.
     
     var ViewFilter = ViewMutator.extend({
         apply: function (silent) {
@@ -400,12 +400,9 @@
         this.listenTo(store, 'start', function () {
             // Initialize mutators
             this.trigger('start');
-            
-            // Listen for changes
-            this.listenTo(store, this.options.listenTo ? this.options.listenTo : 'add change remove', this.sync);
 
             // Synchronize models
-            this.sync();
+            this.wakeup();
             this._isInitialized = true;
         });
         
@@ -418,7 +415,7 @@
         initialize: function () {},
         
         // Synchronizes models against the store
-        sync: function (state) {
+        sync: function () {
             this.models = _.clone(this.store.models);
             
             // Apply default filter
@@ -436,7 +433,14 @@
             // Apply additional filters
             if (this.options.filters) {
                 _.each(this.options.filters, (function (filter) {
-                    this.models = this.filter(filter);
+                    if (_.isFunction(filter)) {
+                        this.models = this.filter(filter);
+                    } else if (_.isObject()) {
+                        var matches = _.matches(filter);
+                        this.models = this.filter(function (model) {
+                            return matches(model.attributes);
+                        });
+                    }
                 }).bind(this));
             }
             
@@ -466,7 +470,7 @@
             this.size = this.models.length;
             
             // Update associated components
-            this.trigger('sync', state);
+            this.trigger('sync');
         },
 
         // Returns a JSON representation of a store
