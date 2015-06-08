@@ -73,17 +73,6 @@
                 type = type.split(':')[1];
             }
 
-            // Broadcast payload
-            if (prefix === '*') {
-                var _payload = _.extend({}, payload);
-                _(dispatcher.stores).forEach(function (store) {
-                    _payload.action.type = store.name + ':' + type;
-                    dispatcher.dispatch(_payload);
-                });
-
-                return;
-            }
-
             var data = action.data;
             var options = action.options ? action.options : {};
 
