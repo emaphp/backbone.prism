@@ -330,13 +330,13 @@
     _.extend(StateView.prototype, ViewBaseMixin, {
         initialize: function () {},
 
-        sync: function (state) {
-            this.attrs = _.extend({cid: this.parent.cid}, this.parent.attributes);
-            this.trigger('sync', state);
+        sync: function () {
+            this.attributes = _.extend({cid: this.parent.cid}, this.parent.attributes);
+            this.trigger('sync');
         },
         
         toJSON: function () {
-            return _.extend({cid: this.parent.cid}, this.attrs);
+            return _.extend({cid: this.parent.cid}, this.attributes);
         },
         
         destroy: destroy
