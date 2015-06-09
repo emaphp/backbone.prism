@@ -120,8 +120,8 @@
     Prism.Channel = Prism.Object.extend(_.extend({
         destroy: function () {
             this.trigger('destroy');
-            this.stopListening();
             this.off();
+            this.stopListening();
             this.stopComplying();
             this.stopReplying();
             return this;
