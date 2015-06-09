@@ -328,6 +328,8 @@
     
     // Include additional mixins
     _.extend(StateView.prototype, ViewBaseMixin, {
+        initialize: function () {},
+
         sync: function (state) {
             this.attrs = _.extend({cid: this.parent.cid}, this.parent.attributes);
             this.trigger('sync', state);
@@ -349,11 +351,32 @@
     // The Prism.State class is a Backbone.Model subclass adding 'viewable' behavior.
 
     Prism.StateMixin = _.extend({
+        constructor: function (attributes, options) {
+            var attrs = attributes || {};
+            options = options || {};
+            this.cid = _.uniqueId('c');
+            this.attributes = {};
+            this.views = {};
+            if (options.collection) this.collection = options.collection;
+            if (options.parse) attrs = this.parse(attrs, options) || {};
+            attrs = _.defaults({}, attrs, _.result(this, 'defaults'));
+            this.set(attrs, options);
+            this.changed = {};
+            this.initialize.apply(this, arguments);
+        },
+
         // Returns a new StateView instance
         createView: function (options) {
+            options = options || {};
             var view = new StateView(this, options);
             view.name = options.name ? options.name : _.uniqueId('view');
             this.views[view.name] = view;
+
+            // Remove view when destroyed
+            this.listenTo(view, 'destroy', function () {
+                delete this.views[view.name];
+            });
+
             return view;
         },
         
@@ -366,6 +389,12 @@
             var view = new StateView(this, {});
             view.name = 'default';
             this.views.default = view;
+
+            // Remove view when destroyed
+            this.listenTo(view, 'destroy', function () {
+                delete this.views[view.name];
+            });
+
             return view;
         }
     }, BaseMixin);
@@ -523,8 +552,19 @@
     // The Prism.Store class is a Backbone.Collection subclass adding 'viewable' behavior.
 
     Prism.StoreMixin = _.extend({
+        constructor: function (models, options) {
+            options = options || {};
+            if (options.model) this.model = options.model;
+            if (options.comparator !== void 0) this.comparator = options.comparator;
+            this._reset();
+            this.views = {};
+            this.initialize.apply(this, arguments);
+            if (models) this.reset(models, _.extend({silent: true}, options));
+        },
+
         // Generates a new StoreView instance
         createView: function(options) {
+            options = options || {};
             // Create view instance
             var view = new StoreView(this, options);
             view.name = options.name ? options.name : _.uniqueId('view');
