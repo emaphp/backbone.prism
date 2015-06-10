@@ -465,7 +465,11 @@
             
             // Sort models
             if (this.options.comparator) {
-                this.models.sort(_.bind(this.options.comparator, this));
+                if (_.isString(this.options.comparator) || this.options.comparator.length === 1) {
+                    this.models = this.sortBy(this.options.comparator, this);
+                } else {
+                    this.models.sort(_.bind(this.options.comparator, this));
+                }
             }
 
             // Update length
