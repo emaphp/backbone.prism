@@ -15,10 +15,10 @@ module.exports = function(config) {
 
     // list of files / patterns to load in the browser
     files: [
-        'bower_components/underscore/underscore.js',
-        'bower_components/backbone/backbone.js',
-        'bower_components/backbone.radio/build/backbone.radio.js',
-        'bower_components/flux/dist/Flux.js',
+        'node_modules/underscore/underscore.js',
+        'node_modules/backbone/backbone.js',
+        'node_modules/backbone.radio/build/backbone.radio.js',
+        'tests/Flux.js',
         'dist/backbone.prism.js',
         'tests/*.js'
     ],

@@ -1,4 +1,7 @@
 # Backbone.Prism
+
+[![Build Status](https://travis-ci.org/emaphp/backbone.prism.svg?branch=master)](https://travis-ci.org/emaphp/backbone.prism)
+
 Flux-like architecture for Backbone.js
 
 <br/>
