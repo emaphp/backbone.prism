@@ -27,7 +27,7 @@ Backbone.Prism is a *Backbone.js* extension that provides additional classes for
 ###Store
 
 <br/>
-According to the designers of Flux, a Store *"contains the application state and logic"*. The *Prism.Store* class extends *Backbone.Collection* and adds the ability to register actions into a dispatcher.
+According to the designers of Flux, a Store *"contains the application state and logic"*. The *Prism.Store* class extends *Backbone.Collection* and adds the ability to register its methods into a dispatcher.
 
 <br/>
 ```javascript
