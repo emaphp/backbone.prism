@@ -31,7 +31,7 @@ Backbone.Prism is a *Backbone.js* extension that provides additional classes for
 ###Store
 
 <br/>
-According to the designers of Flux, a Store *"contains the application state and logic"*. The *Prism.Store* class extends *Backbone.Collection* and adds the ability to register its methods into a dispatcher.
+According to the designers of Flux, a Store *"contains the application state and logic"*. The *Prism.Store* class extends *Backbone.Collection* and adds the ability to register a set of methods into a dispatcher.
 
 <br/>
 ```javascript
@@ -136,7 +136,7 @@ module.exports = MainList;
 ```
 
 <br/>
-The *view* property is then used to generate an object array in *state.view* containing a JSON representation of that view. The component will listen for any *sync* event in the view and update accordingly.
+The *view* property is then used to generate an object array in *state.view* containing a JSON object representation of that view. The component will listen for any *sync* event in the view and update accordingly.
 
 <br/>
 ```javascript
@@ -266,7 +266,6 @@ var store = require('./store');
 
 var view = store.createView({
     size: 5,
-    
     comparator: 'priority'
 });
 
@@ -331,6 +330,7 @@ What if the component uses the *Prism.ViewMixin*? Wouldn't that produce a double
 ```javascript
 handleClick: function () {
     // merge state without triggering render
+    // updates view after 'apply' is triggered
     this.mergeState({page: 2}, this.pager.update());
 }
 ```
@@ -453,7 +453,7 @@ module.exports = ParentComponent;
 ```
 
 <br/>
-Whenever a new state is applied we communicate it to the listener component. In this case we use the *command* method to send the amount of clicks registered.
+Whenever a new state is applied we communicate it to the listener component. In this case we use the *trigger* method to send the amount of clicks registered.
 
 
 <br/>
@@ -473,7 +473,7 @@ var SomeComponent = React.createClass({
         var channel = this.props.channel;
         var clicked = this.state.clicked + 1;
         this.setState({clicked: clicked}, (function () {
-            channel.command('update:clicked', this.state.clicked);
+            channel.trigger('update:clicked', this.state.clicked);
         }).bind(this));
     },
     
@@ -488,7 +488,7 @@ module.exports = SomeComponent;
 ```
 
 <br/>
-The listener component defines a receiver callback using the *comply* method. Both *command* and *comply* are implemented in *Backbone.Radio.Commands*.
+The listener component defines a receiver callback using the *on* method. Channels also include the *request* and *reply* methods.
 
 <br/>
 ```javascript
@@ -502,7 +502,7 @@ var AnotherComponent = React.createClass({
     },
     
     componentDidMount: function () {
-        this.props.channel.comply('update:clicked', (function (clicked) {
+        this.props.channel.on('update:clicked', (function (clicked) {
             this.setState({clicked: clicked});
         }).bind(this));
     },
