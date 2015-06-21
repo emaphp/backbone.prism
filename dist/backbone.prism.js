@@ -1,5 +1,5 @@
 //
-// Backbone.Prism - v1.1.1
+// Backbone.Prism - v1.1.2
 // ------------------------
 // Flux-like architecture for Backbone.js
 // Copyright 2015 Emmanuel Antico
@@ -18,7 +18,7 @@
     }
 }(this, function(global, Backbone, _, Flux) {
     var Prism = Backbone.Prism = Backbone.Prism || {};
-    Prism.VERSION = '1.1.1';
+    Prism.VERSION = '1.1.2';
     Prism.extend = Backbone.Model.extend;
 
     //
@@ -119,21 +119,19 @@
 
     Prism.Channel = Prism.Object.extend(_.extend({
         destroy: function () {
-            this.trigger('destroy');
             this.off();
             this.stopListening();
-            this.stopComplying();
             this.stopReplying();
             return this;
         }
-    }, Backbone.Radio.Commands, Backbone.Radio.Requests));
+    }, Backbone.Radio.Requests));
 
     //
     // Prism.Events
     // ------------
     // The Prism.Events mixin provides the same messaging interface implemented in Prism.Channel.
 
-    Prism.Events = _.extend({}, Backbone.Events, Backbone.Radio.Commands, Backbone.Radio.Requests);
+    Prism.Events = _.extend({}, Backbone.Events, Backbone.Radio.Requests);
 
     //
     // Prism.Dispatcher
