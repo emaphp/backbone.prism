@@ -1,5 +1,5 @@
 //
-// Backbone.Prism - v1.1.2
+// Backbone.Prism - v1.2.0
 // ------------------------
 // Flux-like architecture for Backbone.js
 // Copyright 2015 Emmanuel Antico
@@ -18,13 +18,13 @@
     }
 }(this, function(global, Backbone, _, Flux) {
     var Prism = Backbone.Prism = Backbone.Prism || {};
-    Prism.VERSION = '1.1.2';
+    Prism.VERSION = '1.2.0';
     Prism.extend = Backbone.Model.extend;
 
     //
     // Helpers
     // -------
-    
+        
     // Merge a list of options by keys
     var mergeOptions = function (options, keys) {
         if (!options) {
@@ -52,36 +52,6 @@
         return getOption(this, optionName);
     };
     
-    // Registers a list of actions in a dispatcher instance
-    var register = function (dispatcher, actions) {
-        this._id  = this._id || _.uniqueId('store');
-        dispatcher.stores[this._id] = dispatcher.stores[this._id] || this;
-
-        return dispatcher.register((function (payload) {
-            var action = payload.action;
-            var source = payload.source;
-            var type = action.type;
-            var prefix;
-
-            if (type.indexOf(':') !== -1) {
-                prefix = type.split(':')[0];
-
-                if (prefix !== '*' && typeof this.name !== 'undefined' && prefix !== this.name) {
-                    return;
-                }
-
-                type = type.split(':')[1];
-            }
-
-            var data = action.data;
-            var options = action.options ? action.options : {};
-
-            if (_.isFunction(actions[type])) {
-                actions[type].call(this, data, options, source);
-            }
-        }).bind(this));
-    };
-    
     // Removes all event related data from an instance
     var destroy = function () {
         this.trigger('destroy');
@@ -104,11 +74,8 @@
 
     _.extend(Prism.Object.prototype, Backbone.Events, {
         initialize: function () {},
-
         mergeOptions: mergeOptions,
-
         getOption: proxyGetOption,
-        
         destroy: destroy
     });
     
@@ -139,7 +106,6 @@
     // The Prism.Dispatcher class extends Flux.Dispatcher adding the handleViewAction and handleServerAction methods.
 
     Prism.Dispatcher = function () {
-        this.stores = {};
         Flux.Dispatcher.prototype.constructor.apply(this, arguments);
     };
 
@@ -296,9 +262,15 @@
         getView: function (name) {
             return this.views[name];
         },
-
-        // Registers a list of methods in a dispatcher instance
-        register: register
+                
+        // Returns a default StateView instance for this state
+        getDefaultView: function (options) {
+            if (this.views.default) {
+                return this.views.default;
+            }
+            
+            return this.createView(_.extend(options || {}, { name:'default' }));
+        }
     };
     
     //
@@ -306,7 +278,7 @@
     // ---------------
     // A Prism.StateView instance keeps track of a Prism.State object.
     
-    function StateView (state, options) {
+    var StateView = Prism.StateView = function (state, options) {
         this.parent = state;
         this.options = _.extend({}, _.result(this, 'options'), options);
         this.options.listenTo = this.options.listenTo || 'change';
@@ -322,7 +294,7 @@
         });
         
         this.initialize.apply(this, arguments);
-    }
+    };
     
     // Include additional mixins
     _.extend(StateView.prototype, ViewBaseMixin, {
@@ -341,7 +313,6 @@
     });
     
     StateView.extend = Backbone.Model.extend;
-    Prism.StateView = StateView;
     
     //
     // Prism.State
@@ -376,24 +347,6 @@
             });
 
             return view;
-        },
-        
-        // Returns a default StateView instance for this state
-        getDefaultView: function () {
-            if (this.views.default) {
-                return this.views.default;
-            }
-            
-            var view = new StateView(this, {});
-            view.name = 'default';
-            this.views.default = view;
-
-            // Remove view when destroyed
-            this.listenTo(view, 'destroy', function () {
-                delete this.views[view.name];
-            });
-
-            return view;
         }
     }, BaseMixin);
     
@@ -405,7 +358,7 @@
     // ---------------
     // A Prism.StoreView instance keeps track of a Prism.Store object.
 
-    function StoreView (store, options) {
+    var StoreView = Prism.StoreView = function (store, options) {
         this.parent = store;
         this.models = [];
         this.length = 0;
@@ -425,7 +378,7 @@
         
         // Initialize instance
         this.initialize.apply(this, arguments);
-    }
+    };
 
     // Include additional mixins
     _.extend(StoreView.prototype, ViewBaseMixin, {
@@ -521,12 +474,13 @@
     });
 
     // Add additional Underscore.js methods
-    var _methods = ['forEach', 'each', 'map', 'collect', 'reduce', 'foldl',
-        'inject', 'reduceRight', 'foldr', 'find', 'detect', 'filter', 'select',
-        'reject', 'every', 'all', 'some', 'any', 'include', 'contains', 'invoke',
-        'max', 'min', 'toArray', 'size', 'first', 'head', 'take', 'initial', 'rest',
-        'tail', 'drop', 'last', 'without', 'difference', 'indexOf', 'shuffle',
-        'lastIndexOf', 'isEmpty', 'chain', 'sample'];
+    var _methods = ['forEach', 'each', 'map', 'collect', 'reduce',
+		'foldl', 'inject', 'reduceRight', 'foldr', 'find', 'detect', 'filter',
+		'select', 'reject', 'every', 'all', 'some', 'any', 'include', 'includes',
+		'contains', 'invoke', 'max', 'min', 'toArray', 'size', 'first',
+		'head', 'take', 'initial', 'rest', 'tail', 'drop', 'last',
+		'without', 'difference', 'indexOf', 'shuffle', 'lastIndexOf',
+		'isEmpty', 'chain', 'sample', 'partition'];
 
     _.each(_methods, function(method) {
         StoreView.prototype[method] = function () {
@@ -546,7 +500,6 @@
     });
 
     StoreView.extend = Backbone.Model.extend;
-    Prism.StoreView = StoreView;
 
     //
     // Prism.Store
@@ -601,43 +554,58 @@
     // Build Store class
     Prism.Store = Backbone.Collection.extend(Prism.StoreMixin);
     
-    //
-    // Prism.ViewMixin
-    // ---------------
-    // The Prism.ViewMixin includes additional methods for listening sync events triggered by views.
-    // It also supports state transformations.
-    
-    Prism.ViewMixin = _.extend({
-        getInitialState: function () {
-            // Apply transformation if defined
-            if (_.isFunction(this.transform)) {
-                return this.transform(this.props.view);
-            }
-            
-            return {
-                view: this.props.view.toJSON()
-            };
-        },
+	//
+	// Prism.compose
+	// -------------
+	// Returns a High-Order Component that wraps the given class.
+	
+	//This function implements the default behaviour for 'sync' events triggered on views
+	var defaultOnSync = function (component, view, cclass) {
+		if (_.isFunction(cclass.prototype.transform)) {
+			component.setState(cclass.prototype.transform.call(component, view));
+		} else {
+			component.setState({
+				view: view.toJSON()
+			});
+		}
+	};
+	
+	Prism.compose = function (React, Component, onSync) {
+		var wrapper = React.createClass({
+			componentDidMount: function () {
+				// Update state when view changes
+				var self = this;
+				this.listenTo(this.props.view, 'sync', function () {
+					if (_.isFunction(onSync)) {
+						onSync(self, this.props.view, Component, arguments);
+					} else {
+						defaultOnSync(self, this.props.view, Component);
+					}
+				});
+			},
         
-        componentDidMount: function () {
-            // Update state when view changes
-            this.listenTo(this.props.view, 'sync', function () {
-                this.setState(_.isFunction(this.transform) ? this.transform(this.props.view) : {
-                    view: this.props.view.toJSON()
-                });
-            });
-        },
-        
-        componentWillUnmount: function () {
-            this.stopListening(this.props.view, 'sync');
-        },
-        
-        // Merges states without refreshing
-        mergeState: function (state, callback) {
-            _.extend(this.state, state);
-            if (callback) callback();
-        }
-    }, Backbone.Events);
+			componentWillUnmount: function () {
+				//Stop listening for events
+				this.stopListening(this.props.view, 'sync');
+			},
+			
+			//Sets component state without re-draw
+			mergeState: function (state, callback) {
+				_.extend(this.state, state);
+				if (callback) {
+					callback();
+				}
+			},
+			
+			render: function () {
+				//Render wrapper component
+				return React.createElement(Component, _.extend({}, this.props, this.state));
+			}
+		});
+		
+		_.extend(wrapper.prototype, Prism.Events);
+		return wrapper;
+	};
 
     return Prism;
 }));

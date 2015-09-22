@@ -71,7 +71,7 @@ let Profile = State.extend({
 ###Dispatcher
 
 <br>
-The `Prism.Dispatcher` class doesn't add much to the original Flux dispatcher except for a few methods like `handleViewAction` and `handleServerAction`.
+The `Prism.Dispatcher` class doesn't add much to the original *Flux* dispatcher except for a few methods like `handleViewAction` and `handleServerAction`.
 
 <br>
 ```javascript
@@ -84,7 +84,7 @@ export default new Dispatcher();
 ###Actions
 
 <br>
-It's time to define some actions. Let's start by building a simple store. As established by Flux, stores must register their *actions* through the dispatcher.
+It's time to define some *actions*. Let's start by building a simple store. As established by Flux, stores must register their actions through the dispatcher.
 
 <br>
 ```javascript
@@ -134,16 +134,16 @@ export default TaskActions;
 ```
 
 <br>
-That's it for now. In order to progress further we need to introduce the main component of `Prism`: the *view*.
+That's it for now. In order to progress further we need to introduce the main component of Backbone.Prism: the *view*.
 
 <br>
 ###Views
 
 <br>
-Mutability is a b\*tch, so instead of messing around with models and collections we will create the concept of *view*. These views don't have anything to do with the `Backbone.View` class you love so much. Think at them more like the views you find in relational databases like MySQL or PostgreSQL. Views in RDBMS are an extremely useful feature because they allow to generate a subset of entities according to a given criteria. `Backbone.Prism` allows a similar approach and provides features like ordering and filtering in a very unexpensive way. Things that are important to understand about views:
+Mutability is a b\*tch, so instead of messing around with models and collections we'll introduce the concept of *view*. These views don't have anything to do with the `Backbone.View` class you love so much. Think at them more like the views you find in relational databases like MySQL or PostgreSQL. Views in RDBMS are an extremely useful feature because they allow to generate a subset of entities according to a given criteria. Backbone.Prism allows a similar approach and provides features like ordering and filtering in a very unexpensive way. Things that are important to understand about views:
 
  * Views are created from instances of `Prism.Store` and `Prism.State`.
- * They have nothing to do with `Backbone.Views` (we will use React for rendering HTML).
+ * They don't have anything to do with `Backbone.Views` (we will use React for rendering HTML).
  * Views keep a collection of values/attributes that are immutable.
  * Views listen for changes in their parent store/state. When a change event is triggered they generate a new list of values/attributes.
 
@@ -256,7 +256,7 @@ Rendering a component using `Prism` consists in 3 steps:
  * Call `React.render` using the view as a property.
 
 <br>
-The following code is a simple example of how to achive this:
+The following code is a simple example of how to achieve this:
 
 <br>
 ```javascript
@@ -275,7 +275,7 @@ store.start();
 ```
 
 <br>
-The `start` method tells all views that the store is now ready and all views can now sync their data. This is pretty useful because it allows the developer to only initialize components when some data si available (ex: we fetched a collection from server).
+The `start` method tells all views that the store is now ready and all views can now sync their data. This is pretty useful because it allows the developer to only initialize components when data is available (ex: we fetched a collection from the server).
 
 <br>
 #####Event/Data flow
@@ -292,7 +292,7 @@ The following diagram tries to explain how `Prism` works under the hood.
  * Our original component is rendered. It receives the high-order component state as the property list.
 
 <br>
-###TasksApp: The final form
+###TaskApp: The final form
 
 <br>
 Our application is not yet complete. Let's add a form component so we can add more tasks to our store. We're using the `TaskActions` mixin we implemented previously.
@@ -365,8 +365,9 @@ export default TaskForm;
 ```
 
 <br>
-We have a form and a list, is's time to put them together using the `TaskApp` component.
+We have a form and a list, it's time to put them together using the `TaskApp` component.
 
+<br>
 ```javascript
 //File: TasksApp.jsx
 import React from 'react';
@@ -391,7 +392,7 @@ export default TasksApp;
 ```
 
 <br>
-For an extra credit, let's show our list ordered by *title*. This can be achieved by defining a *comparator* option when creaing the view.
+For an extra credit, let's show our list ordered by *title*. This can be achieved by defining a *comparator* option when creating the view.
 
 ```javascript
 let view = store.createView({
