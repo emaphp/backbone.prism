@@ -7,9 +7,7 @@ describe('Prism.Dispatcher tests', function() {
     });
 
     it('Should call store method', function () {
-        var store = new Backbone.Prism.Store({
-            name: 'custom'
-        });
+        var store = new Backbone.Prism.Store();
         var dispatcher = new Backbone.Prism.Dispatcher();
         var methods = {
             'test-callback': function () {
@@ -17,50 +15,21 @@ describe('Prism.Dispatcher tests', function() {
         };
 
         spyOn(methods, 'test-callback');
-        store.register(dispatcher, methods);
+        dispatcher.register(function(payload) {
+			var action = payload.action;
+			
+			switch (payload.action.type) {
+				case 'test-callback':
+					methods['test-callback']();
+				break
+				
+				default:
+			}
+		});
+        
         dispatcher.handleViewAction({
-            type: 'custom:test-callback'
+            type: 'test-callback'
         });
         expect(methods['test-callback']).toHaveBeenCalled();
-    });
-
-    it('Should broadcast call', function () {
-        var dispatcher = new Backbone.Prism.Dispatcher();
-        var customStore = new Backbone.Prism.Store({
-            name: 'custom'
-        });
-
-        var anotherStore = new Backbone.Prism.Store({
-            name: 'another'
-        });
-
-        var customMethods = {
-            'return-name': function () {
-                return;
-            }
-        };
-
-        var anotherMethods = {
-            'return-name': function () {
-                return;
-            }
-        };
-
-        spyOn(customMethods, 'return-name');
-        spyOn(anotherMethods, 'return-name');
-
-        customStore.register(dispatcher, customMethods);
-        anotherStore.register(dispatcher, anotherMethods);
-        dispatcher.handleViewAction({
-            type: '*:return-name'
-        });
-        expect(customMethods['return-name']).toHaveBeenCalled();
-        expect(anotherMethods['return-name']).toHaveBeenCalled();
-        var args = customMethods['return-name'].calls.argsFor(0);
-        expect(args[0]).toBeUndefined();
-        expect(args[2]).toBe('view');
-        var args = anotherMethods['return-name'].calls.argsFor(0);
-        expect(args[0]).toBeUndefined();
-        expect(args[2]).toBe('view');
     });
 });
