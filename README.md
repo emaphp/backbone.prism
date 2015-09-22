@@ -2,16 +2,15 @@
 
 [![Build Status](https://travis-ci.org/emaphp/backbone.prism.svg?branch=master)](https://travis-ci.org/emaphp/backbone.prism)
 
-Flux-like architecture for Backbone.js
+Flux architecture for Backbone.js
 
 <br>
 ###About
 
 <br>
-Backbone.Prism is a *Backbone.js* extension that provides additional classes for implementing a [Flux](https://facebook.github.io/flux/ "")-like architecture that combines [Backbone.js](http://backbonejs.org/ "") and [React](https://facebook.github.io/react/ "").
+Backbone.Prism is a *Backbone.js* extension that provides additional classes for implementing a [Flux](https://facebook.github.io/flux/ "") architecture that combines [Backbone.js](http://backbonejs.org/ "") and [React](https://facebook.github.io/react/ "").
 
 <br>
-![Backbone.Prism](http://drive.google.com/uc?export=view&id=0B3PWnBYHw7RQRDRyTnh2UWF2Zk0)
 
 <br>
 ###Installation
@@ -30,10 +29,10 @@ Backbone.Prism is a *Backbone.js* extension that provides additional classes for
 ###Stores
 
 <br>
-    > Notice that this documentation uses *ES6* syntax. You'll need something like [Babel](http://babeljs.io/ "") to run the examples.
+>Notice that this documentation uses *ES6* syntax. You'll need something like [Babel](http://babeljs.io/ "") to run the examples.
 
 <br>
-According to the designers of Flux, stores *"contains the application state and logic"*. This same approach is implemented through the `Prism.Store` class, which extends `Backbone.Collection`.
+According to the designers of Flux, a store *"contains the application state and logic"*. This same approach is implemented through the `Prism.Store` class, which extends `Backbone.Collection`.
 
 <br>
 ```javascript
@@ -78,38 +77,44 @@ export default new Dispatcher();
 ```
 
 <br>
-As established by Flux, stores must register their *actions* through the dispatcher.
+###Actions
+
+<br>
+It's time to define some actions. As established by Flux, stores must register their *actions* through the dispatcher. We're going to implement a simple store using the `handleViewAction` and `handleServerAction` methods we talked previously.
 
 <br>
 ```javascript
-import dispatcher from './Dispatcher';
+import {Store} from 'backbone.prism';
+import dispatcher from './dispatcher';
 
-let store = new TaskStore({
-    //...
-});
+let store = new Store([]);
 
 store.dispatchToken = dispatcher.register(payload => {
-    let action = payload.action;
-    
-    switch (action.type) {
-        case 'add-value':
-            //...
-        break;
-        
-        case 'update-value':
-            //..
-        break;
-
-        default:
-    }
+	let action = payload.action;
+	
+	switch (action.type) {
+		case 'add-item':
+			store.add(action.data);
+		break;
+		
+		case 'remove-item':
+			let cid = action.data;
+			let model = store.get(cid);
+			store.remove(model);
+		break;
+		
+		default:
+	}
 });
+
+export default store;
 ```
 
 <br>
 ###Views
 
 <br>
-Mutability is a b\*tch, so instead of messing around with models and collections we will create the concept of *View*. These views don't have anything to do with `Backbone.View`. Think at them more like the views you find in relational databases like MySQL or PostgreSQL. Views in RDBMS are an extremely useful feature because they allow to generate a subset of entities according to a given criteria. `Backbone.Prism` allows a similar approach and provides features like ordering and filtering in a very unexpensive way. Things that are important to understand about views:
+Mutability is a b\*tch, so instead of messing around with models and collections we will create the concept of *view*. These views don't have anything to do with the `Backbone.View` class you love so much. Think at them more like the views you find in relational databases like MySQL or PostgreSQL. Views in RDBMS are an extremely useful feature because they allow to generate a subset of entities according to a given criteria. `Backbone.Prism` allows a similar approach and provides features like ordering and filtering in a very unexpensive way. Things that are important to understand about views:
 
  * Views are created from instances of `Prism.Store` and `Prism.State`.
  * They have nothing to do with `Backbone.Views` (we will use React for rendering HTML).
@@ -129,10 +134,14 @@ We obtain a new view using the `createView` method.
 ```javascript
 import myStore from './store';
 
-let mainView = myStore.createView({
-    name: 'main',            // Optional identifier
-    comparator: 'created_at' // Default comparator
+//Creates a view
+let view = myStore.createView({
+    name: 'main',            //Optional identifier
+    comparator: 'created_at' //Default comparator
 });
+
+//Obtains a view by name
+let view = myStore.getView('main');
 ```
 
 <br>
@@ -141,6 +150,7 @@ We can also obtain a default view by calling the `getDefaultView` method.
 <br>
 ```javascript
 import myStore from './store';
+
 let view = myStore.getDefaultView();
 view.name === 'default'; // true
 ```
@@ -149,79 +159,22 @@ view.name === 'default'; // true
 #####StateView
 
 <br>
-Same feature is also available for the `Prism.State` class.
+This works as well with the `Prism.State` class.
 
 <br>
 ```javascript
-import store from './store';
+import myState from './myState';
 
-let mainView = store.createView({
-    name: 'main',            // Optional identifier
-    comparator: 'created_at' // Default comparator
+let view = myState.createView({
+    name: 'main'
 });
 ```
-
-<br>
-```javascript
-// File: MainList.jsx
-var React = require('react');
-var Prism = require('backbone.prism');
-
-var MainList = React.createClass({
-    mixins: [Prism.ViewMixin],
-    
-    render: function() {
-        var renderer = function (model) {
-            return (
-                <li key={model.cid}>{model.description}</li>
-            );
-        };
-        
-        return (
-            <ul>{this.state.view.map(renderer)}</ul>
-        );
-    }
-});
-```
-
-<br>
-###Actions
-
-<br>
-It's time to define some actions. We can now use the `handleViewAction` and `handleServerAction` methods we talked previously.
-
-<br>
-```javascript
-import Dispatcher from './dispatcher';
-
-let TodoActions = {
-    'add-item': (title, description) => {
-        Dispatcher.handleViewAction({
-            type: 'add-item',
-            data: {
-                title,
-                description
-            }
-        });
-    },
-    
-    'remove-item': (cid) => {
-        Dispatcher.handleViewAction({
-            type: 'remove-item',
-            data: {
-                cid
-            }
-        });
-    }
-};
-```
-
 
 <br>
 ###Wrapping up
 
 <br>
-We've now implemented all elements required for a *Flux* architecture. The only thing left is understanding how to render a *View* using a React component. This example introduces the `Prism.compose` method and the concept of **High-Order Component**.
+We've now implemented all elements required for a *Flux* architecture. The only thing left is understanding how to render a *view* using a React component. This example introduces the `Prism.compose` method and the concept of **High-Order Component**.
 
 <br>
 #####High-Order Components
@@ -255,47 +208,60 @@ export default Prism.compose(React, TaskList);
 ```
 
 <br>
-First thing first: Our render method checks if a property name `view` is available. When false, we print a 'Loading data' message. In a real application you might want to fetch some server data before doing stuff. This is a nice approach and prevents errors during initialization.
-Then we create a function (using the *fat-arrow* syntax) which will render all elements. The *view* property is a JSON representation of the entire collection with some slight modifications. For example, notice that we're setting the *key* prop to the corresponding model *cid*. This property is added to each element when exported from a view. Finally whe use `map` to apply our render function to each model.
-The `Prism.compose` method call you see at the end returns a wrapper class for a given component. This method expects the React object and the component class. This new class is known as **High-Order Component** and adds some necessary feature to make wverything work:
+First things first: Our render method checks if a property name `view` is available. When false, we print a 'Loading data' message. In a real world application you might want to fetch some server data before doing stuff. This is a nice approach and prevents errors during initialization.
+Then we create a function (using the *fat-arrow* syntax) which will render all the elements. The *view* property is a JSON representation of the entire collection with some slight modifications. For example, notice that we're setting the *key* prop to the corresponding model *cid*. This property is added to each element when exported from a view. Finally we use `map` to apply our render function to each model.
+The `Prism.compose` method call you see at the end returns a wrapper class for a given component. This method expects the React object and the component class. This new class is known as **High-Order Component** and adds some necessary feature to make everything work. The class returned by this method adds the following features:
 
  * Starts listening for any `sync` event in the view. Changes made to a view will re-render the component.
  * Adds the `mergeState` method which is used to set a new state without triggering a re-render.
  * Remove listeners when unmounted.
 
 <br>
-
-If you want to now more about **High-Order Components** check out this [post](https://medium.com/@dan_abramov/mixins-are-dead-long-live-higher-order-components-94a0d2f9e750 "").
+If you want to now more about **High-Order Components** check out this [post](https://medium.com/@dan_abramov/mixins-are-dead-long-live-higher-order-components-94a0d2f9e750 "") by Dan Abramov.
 
 <br>
 #####Using views
 
-
 <br>
-There are a few things
-This component is using the `componentDidMount` method to initialize 
-To render this component we do the following.
+Rendering a component using `Prism` consists in 3 steps:
+
+ * Create a store/state instance.
+ * Create a view from it.
+ * Call `React.render` using the view as a property.
 
 <br>
 ```
 import React from 'react';
 import store from './store';
 
+//Create a default view
+let storeView = store.getDefaultView();
+
 //Render list
-React.render(<TaskList view={store.getDefaultView()} />, document.getElementById('app'));
+React.render(<TaskList view={storeView} />, document.getElementById('app'));
+
+//Initialize all views
+store.start();
 ```
 
 <br>
-The *view* property is then used to generate an object array in *state.view* containing a JSON object representation of that view. The component will listen for any *sync* event in the view and update accordingly.
+The `start` method tells all views that the store is now ready and all views can now syc their data.
+
+
 
 <br>
-```javascript
-var React = require('react');
-var MainList = require('./MainList.jsx');
-var mainView = require('./mainView');
+#####How does it work
 
-React.render(<MainList view={mainView}/>, document.getElementById('app'));
-```
+<br>
+The following diagram tries to explain how `Prism` works under the hood.
+
+![Backbone.Prism](http://drive.google.com/uc?export=view&id=0B3PWnBYHw7RQOFVaMVROU3BocUk)
+
+
+ * A store is modified by an event triggered from the dispatcher. A *change* event is triggered from the store.
+ * The view synchonizes its data with the store. A *sync* event is triggered from the view.
+ * The high-order component watching that view updates its *view* state var. This causes the component to re-render.
+ * Our original component is rendered. It receives the HOC state as the property list.
 
 <br>
 ```javascript
