@@ -5,6 +5,9 @@
 Flux architecture for Backbone.js
 
 <br>
+![Backbone.Prism](http://drive.google.com/uc?export=view&id=0B3PWnBYHw7RQVnluNV9oSjY0UHM)
+
+<br>
 ###About
 
 <br>
@@ -72,6 +75,7 @@ The `Prism.Dispatcher` class doesn't add much to the original Flux dispatcher ex
 
 <br>
 ```javascript
+//File: dispatcher.js
 import {Dispatcher} from 'backbone.prism';
 export default new Dispatcher();
 ```
@@ -80,35 +84,57 @@ export default new Dispatcher();
 ###Actions
 
 <br>
-It's time to define some actions. As established by Flux, stores must register their *actions* through the dispatcher. We're going to implement a simple store using the `handleViewAction` and `handleServerAction` methods we talked previously.
+It's time to define some actions. Let's start by building a simple store. As established by Flux, stores must register their *actions* through the dispatcher.
 
 <br>
 ```javascript
+//File: store.js
 import {Store} from 'backbone.prism';
 import dispatcher from './dispatcher';
 
-let store = new Store([]);
+let store = new Store([
+    { title: 'Do some coding', priority: 3 },
+    { title: '(Actually) make some tests', priority: 2 },
+    { title: 'Check out that cool new framework', priority: 1}
+]);
 
 store.dispatchToken = dispatcher.register(payload => {
 	let action = payload.action;
 	
 	switch (action.type) {
-		case 'add-item':
+		case 'add-task':
 			store.add(action.data);
 		break;
-		
-		case 'remove-item':
-			let cid = action.data;
-			let model = store.get(cid);
-			store.remove(model);
-		break;
-		
+				
 		default:
 	}
 });
 
 export default store;
 ```
+
+<br>
+We need to provide a dead-simple interface to those actions. A simple mixin will do.
+
+<br>
+```javascript
+//File: actions.js
+import dispatcher from 'dispatcher';
+
+let TaskActions = {
+    addTask(task) {
+        dispatcher.handleViewAction({
+            type: 'add-task',
+            data: task
+        });
+    }
+};
+
+export default TaskActions;
+```
+
+<br>
+That's it for now. In order to progress further we need to introduce the main component of `Prism`: the *view*.
 
 <br>
 ###Views
@@ -132,16 +158,16 @@ We obtain a new view using the `createView` method.
 
 <br>
 ```javascript
-import myStore from './store';
+import store from './store';
 
 //Creates a view
-let view = myStore.createView({
+let view = store.createView({
     name: 'main',            //Optional identifier
     comparator: 'created_at' //Default comparator
 });
 
 //Obtains a view by name
-let view = myStore.getView('main');
+let view = store.getView('main');
 ```
 
 <br>
@@ -149,9 +175,9 @@ We can also obtain a default view by calling the `getDefaultView` method.
 
 <br>
 ```javascript
-import myStore from './store';
+import store from './store';
 
-let view = myStore.getDefaultView();
+let view = store.getDefaultView();
 view.name === 'default'; // true
 ```
 
@@ -163,9 +189,9 @@ This works as well with the `Prism.State` class.
 
 <br>
 ```javascript
-import myState from './myState';
+import state from './myState';
 
-let view = myState.createView({
+let view = state.createView({
     name: 'main'
 });
 ```
@@ -180,11 +206,11 @@ We've now implemented all elements required for a *Flux* architecture. The only 
 #####High-Order Components
 
 <br>
-We'll start by declaring a component that will render a list of items. The `TaskList` component will receive a view instance containing a list of items and render it using a simple unordered list.
-
+We'll start by declaring a component that will render a list of items. The `TaskList` component will receive a view instance containing a list of tasks and render it using a simple unordered list.
 
 <br>
 ```javascript
+//File: TaskList.jsx
 import React from 'react';
 import Prism from 'backbone.prism';
 
@@ -210,7 +236,7 @@ export default Prism.compose(React, TaskList);
 <br>
 First things first: Our render method checks if a property name `view` is available. When false, we print a 'Loading data' message. In a real world application you might want to fetch some server data before doing stuff. This is a nice approach and prevents errors during initialization.
 Then we create a function (using the *fat-arrow* syntax) which will render all the elements. The *view* property is a JSON representation of the entire collection with some slight modifications. For example, notice that we're setting the *key* prop to the corresponding model *cid*. This property is added to each element when exported from a view. Finally we use `map` to apply our render function to each model.
-The `Prism.compose` method call you see at the end returns a wrapper class for a given component. This method expects the React object and the component class. This new class is known as **High-Order Component** and adds some necessary feature to make everything work. The class returned by this method adds the following features:
+The `Prism.compose` method call you see at the end returns a wrapper class for a given component. This method expects the React object and the component class. This new class is known as **High-Order Component** and adds some necessary features to make everything work. The class returned by this method adds the following behaviour:
 
  * Starts listening for any `sync` event in the view. Changes made to a view will re-render the component.
  * Adds the `mergeState` method which is used to set a new state without triggering a re-render.
@@ -230,7 +256,11 @@ Rendering a component using `Prism` consists in 3 steps:
  * Call `React.render` using the view as a property.
 
 <br>
-```
+The following code is a simple example of how to achive this:
+
+<br>
+```javascript
+//File: main.js
 import React from 'react';
 import store from './store';
 
@@ -245,12 +275,10 @@ store.start();
 ```
 
 <br>
-The `start` method tells all views that the store is now ready and all views can now syc their data.
-
-
+The `start` method tells all views that the store is now ready and all views can now sync their data. This is pretty useful because it allows the developer to only initialize components when some data si available (ex: we fetched a collection from server).
 
 <br>
-#####How does it work
+#####Event/Data flow
 
 <br>
 The following diagram tries to explain how `Prism` works under the hood.
@@ -258,45 +286,122 @@ The following diagram tries to explain how `Prism` works under the hood.
 ![Backbone.Prism](http://drive.google.com/uc?export=view&id=0B3PWnBYHw7RQOFVaMVROU3BocUk)
 
 
- * A store is modified by an event triggered from the dispatcher. A *change* event is triggered from the store.
- * The view synchonizes its data with the store. A *sync* event is triggered from the view.
+ * An action is executed that modifies the store. A *change* event is triggered.
+ * The view listens this event and synchonizes its data with the store. A *sync* event is triggered.
  * The high-order component watching that view updates its *view* state var. This causes the component to re-render.
- * Our original component is rendered. It receives the HOC state as the property list.
+ * Our original component is rendered. It receives the high-order component state as the property list.
+
+<br>
+###TasksApp: The final form
+
+<br>
+Our application is not yet complete. Let's add a form component so we can add more tasks to our store. We're using the `TaskActions` mixin we implemented previously.
 
 <br>
 ```javascript
-// File TaskForm.jsx
-var React = require('react');
-var TasksActions = require('./TasksActions');
+//File: TaskForm.jsx
+import React from 'react';
+import TaskActions from './actions';
 
-var TaskForm = React.createClass({
-    mixins: [TasksActions],
-    
-    getInitialState: function () {
-        return {
-            description: ''
-        };
-    },
-    
-    handleAddItem: function(e) {
-        e.preventDefault();
-    
-        var item = {
-            description: this.state.description,
-            created_at: (new Date()).getTime()
-        };
+class TaskForm extends React.Component {
+    constructor(props) {
+        super(props);
         
-        this.doAddItem(item);
-        this.setState(this.getInitialState());
-    },
-
-    render: function () {
-        // ...
+        //Set initial state
+        this.state = {
+            title: '',
+            priority: 1
+        };
     }
-});
+    
+    handleInputTitle(e) {
+        let value = $(e.target).val();
+        this.setState({
+            title: value
+        });
+    }
 
-module.exports = TaskForm;
+    handleSelectPriority(e) {
+        let value = $(e.target).val();
+        this.setState({
+            priority: value
+        });
+    }
+    
+    handleSubmit(e) {
+        e.preventDefault();
+
+        if (!this.state.title) {
+            return;
+        }
+
+        let task = {
+            title: this.state.title,
+            priority: this.state.priority
+        };
+
+        TaskActions.addTask(task);
+        this.setState({
+            title: '',
+            priority: 1
+        });
+    }
+    
+    render() {
+        return (
+            <form onSubmit={this.handleSubmit.bind(this)}>
+                <input type="text" value={this.state.title} onChange={this.handleInputTitle.bind(this)}/>
+                <select value={this.state.priority} onChange={this.handleSelectPriority.bind(this)}>
+                    <option value="1">Low</option>
+                    <option value="2">Normal</option>
+                    <option value="3">High</option>
+                </select>
+            </form>
+        );
+    }
+}
+
+export default TaskForm;
 ```
+
+<br>
+We have a form and a list, is's time to put them together using the `TaskApp` component.
+
+```javascript
+//File: TasksApp.jsx
+import React from 'react';
+import store from './store';
+import TaskList from './TaskList.jsx';
+import TaskForm from './TaskForm.jsx';
+
+let view = store.getDefaultView();
+
+class TasksApp extends React.Component {
+    render() {
+        return (
+            <div>
+                <TaskList view={view} />
+                <TaskForm />
+            </div>
+        );
+    }
+}
+
+export default TasksApp;
+```
+
+<br>
+For an extra credit, let's show our list ordered by *title*. This can be achieved by defining a *comparator* option when creaing the view.
+
+```javascript
+let view = store.createView({
+    name: 'main',
+    comparator: 'title'
+});
+```
+
+<br>
+For even more control over how views build themselves we need to introduce *transformations*.
 
 <br>
 ###Transformations
