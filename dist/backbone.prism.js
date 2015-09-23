@@ -557,7 +557,7 @@
 	//
 	// Prism.compose
 	// -------------
-	// Returns a High-Order Component that wraps the given class.
+	// Returns a Higher-Order Component that wraps the given class.
 	
 	//This function implements the default behaviour for 'sync' events triggered on views
 	var defaultOnSync = function (component, view, cclass) {

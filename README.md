@@ -32,10 +32,10 @@ Backbone.Prism is a *Backbone.js* extension that provides additional classes for
 ###Stores
 
 <br>
->Notice that this documentation uses *ES6* syntax. You'll need something like [Babel](http://babeljs.io/ "") to run the examples.
+>Notice that this documentation uses *ES6* syntax. You'll need something like [Babel](http://babeljs.io/ "") to run the examples. If you're unsure of how to write your components in ES6 make sure to read this [post](http://www.tamas.io/react-with-es6/ "") by Tamas Piros.
 
 <br>
-According to the designers of Flux, a store *"contains the application state and logic"*. This same approach is implemented through the `Prism.Store` class, which extends `Backbone.Collection`.
+According to the designers of *Flux*, a store *"contains the application state and logic"*. This same approach is implemented through the `Prism.Store` class, which extends `Backbone.Collection`.
 
 <br>
 ```javascript
@@ -84,7 +84,7 @@ export default new Dispatcher();
 ###Actions
 
 <br>
-It's time to define some *actions*. Let's start by building a simple store. As established by Flux, stores must register their actions through the dispatcher.
+It's time to define some *actions*. Let's start by building a simple store. As established by *Flux*, stores must register their actions through the dispatcher.
 
 <br>
 ```javascript
@@ -95,7 +95,9 @@ import dispatcher from './dispatcher';
 let store = new Store([
     { title: 'Do some coding', priority: 3 },
     { title: '(Actually) make some tests', priority: 2 },
-    { title: 'Check out that cool new framework', priority: 1}
+    { title: 'Check out that cool new framework', priority: 1 },
+    { title: 'Make some documentation', priority: 1 },
+    { title: 'Call Saoul', priority: 3 }
 ]);
 
 store.dispatchToken = dispatcher.register(payload => {
@@ -140,7 +142,7 @@ That's it for now. In order to progress further we need to introduce the main co
 ###Views
 
 <br>
-Mutability is a b\*tch, so instead of messing around with models and collections we'll introduce the concept of *view*. These views don't have anything to do with the `Backbone.View` class you love so much. Think at them more like the views you find in relational databases like MySQL or PostgreSQL. Views in RDBMS are an extremely useful feature because they allow to generate a subset of entities according to a given criteria. Backbone.Prism allows a similar approach and provides features like ordering and filtering in a very unexpensive way. Things that are important to understand about views:
+Mutability is a b\*tch, so instead of messing around with models and collections we'll introduce the concept of *view*. These views don't have anything to do with the `Backbone.View` class you love so much. Think at them more like the views you find in relational databases like MySQL or PostgreSQL. Views in RDBMS are an extremely useful feature because they allow to generate a subset of entities for a given criteria. *Backbone.Prism* allows a similar approach and allows features like ordering and filtering in a simple manner. Things that are important to understand about views:
 
  * Views are created from instances of `Prism.Store` and `Prism.State`.
  * They don't have anything to do with `Backbone.Views` (we will use React for rendering HTML).
@@ -162,8 +164,8 @@ import store from './store';
 
 //Creates a view
 let view = store.createView({
-    name: 'main',            //Optional identifier
-    comparator: 'created_at' //Default comparator
+    name: 'main',           //Optional identifier
+    comparator: 'priority'  //Default comparator
 });
 
 //Obtains a view by name
@@ -189,7 +191,7 @@ This works as well with the `Prism.State` class.
 
 <br>
 ```javascript
-import state from './myState';
+import state from './state';
 
 let view = state.createView({
     name: 'main'
@@ -200,10 +202,10 @@ let view = state.createView({
 ###Wrapping up
 
 <br>
-We've now implemented all elements required for a *Flux* architecture. The only thing left is understanding how to render a *view* using a React component. This example introduces the `Prism.compose` method and the concept of **High-Order Component**.
+We've now implemented all elements required for a *Flux* architecture. The only thing left is understanding how to render a *view* using a React component. This example introduces the `Prism.compose` method and the concept of **Higher-Order Component**.
 
 <br>
-#####High-Order Components
+#####Higher-Order Components
 
 <br>
 We'll start by declaring a component that will render a list of items. The `TaskList` component will receive a view instance containing a list of tasks and render it using a simple unordered list.
@@ -234,16 +236,16 @@ export default Prism.compose(React, TaskList);
 ```
 
 <br>
-First things first: Our render method checks if a property name `view` is available. When false, we print a 'Loading data' message. In a real world application you might want to fetch some server data before doing stuff. This is a nice approach and prevents errors during initialization.
-Then we create a function (using the *fat-arrow* syntax) which will render all the elements. The *view* property is a JSON representation of the entire collection with some slight modifications. For example, notice that we're setting the *key* prop to the corresponding model *cid*. This property is added to each element when exported from a view. Finally we use `map` to apply our render function to each model.
-The `Prism.compose` method call you see at the end returns a wrapper class for a given component. This method expects the React object and the component class. This new class is known as **High-Order Component** and adds some necessary features to make everything work. The class returned by this method adds the following behaviour:
+First things first: Our render method checks if a property name `view` is available. When false, we print a *'Loading data'* message. In a real world application you might want to fetch some server data before doing stuff. This is a nice approach and prevents errors during initialization.
+Then we create a function (using the *fat-arrow* syntax) which will render all out tasks. The *view* property is a JSON representation of the entire collection with some slight modifications. For example, notice that we're setting the *key* prop to the corresponding model *cid*. This property is added to each element when exported from a view. Finally we use `map` to apply our render function to each model.
+The `Prism.compose` method call you see at the end returns a wrapper class for a given component. This method expects the React object and the component class. This new class is known as **Higher-Order Component** and adds some necessary features to make everything work. The class returned by this method adds the following behaviour:
 
  * Starts listening for any `sync` event in the view. Changes made to a view will re-render the component.
  * Adds the `mergeState` method which is used to set a new state without triggering a re-render.
- * Remove listeners when unmounted.
+ * Removes listeners when unmounted.
 
 <br>
-If you want to now more about **High-Order Components** check out this [post](https://medium.com/@dan_abramov/mixins-are-dead-long-live-higher-order-components-94a0d2f9e750 "") by Dan Abramov.
+If you want to now more about **Higher-Order Components** check out this [post](https://medium.com/@dan_abramov/mixins-are-dead-long-live-higher-order-components-94a0d2f9e750 "") by Dan Abramov.
 
 <br>
 #####Using views
@@ -253,7 +255,7 @@ Rendering a component using `Prism` consists in 3 steps:
 
  * Create a store/state instance.
  * Create a view from it.
- * Call `React.render` using the view as a property.
+ * Call `React.render`. Pass the view as a prop.
 
 <br>
 The following code is a simple example of how to achieve this:
@@ -262,6 +264,7 @@ The following code is a simple example of how to achieve this:
 ```javascript
 //File: main.js
 import React from 'react';
+import TaskList from './TaskList.jsx';
 import store from './store';
 
 //Create a default view
@@ -275,24 +278,24 @@ store.start();
 ```
 
 <br>
-The `start` method tells all views that the store is now ready and all views can now sync their data. This is pretty useful because it allows the developer to only initialize components when data is available (ex: we fetched a collection from the server).
+The `start` method tells all views that the store is ready and they're able to sync their data. This is pretty useful because it allows the developer to only initialize components when data is available (ex: we fetched a collection from the server).
 
 <br>
 #####Event/Data flow
 
 <br>
-The following diagram tries to explain how `Prism` works under the hood.
+The following diagram tries to explain how *Backbone.Prism* works under the hood.
 
 ![Backbone.Prism](http://drive.google.com/uc?export=view&id=0B3PWnBYHw7RQOFVaMVROU3BocUk)
 
 
  * An action is executed that modifies the store. A *change* event is triggered.
- * The view listens this event and synchonizes its data with the store. A *sync* event is triggered.
- * The high-order component watching that view updates its *view* state var. This causes the component to re-render.
- * Our original component is rendered. It receives the high-order component state as the property list.
+ * The view synchonizes its data with the store. A *sync* event is triggered.
+ * The higher-order component updates its *view* state var. This causes the component to re-render.
+ * Our original component is rendered. It receives the higher-order component state as props.
 
 <br>
-###TaskApp: The final form
+###The TaskApp component
 
 <br>
 Our application is not yet complete. Let's add a form component so we can add more tasks to our store. We're using the `TaskActions` mixin we implemented previously.
@@ -340,7 +343,10 @@ class TaskForm extends React.Component {
             priority: this.state.priority
         };
 
+        //Add task
         TaskActions.addTask(task);
+        
+        //Reset state
         this.setState({
             title: '',
             priority: 1
@@ -395,44 +401,69 @@ export default TasksApp;
 For an extra credit, let's show our list ordered by *title*. This can be achieved by defining a *comparator* option when creating the view.
 
 ```javascript
-let view = store.createView({
-    name: 'main',
+let view = store.getDefaultView({
     comparator: 'title'
 });
 ```
 
 <br>
-For even more control over how views build themselves we need to introduce *transformations*.
-
-<br>
 ###Transformations
 
 <br>
-Components including the *Prism.ViewMixin* can generate a custom state by implementing the *transform* method. This method receives the view instance and returns an object containing the desired state. Transformations are pretty useful for things like counters.
+By default, the `TaskList` component receives a *view* property with a JSON representation of the view. In order to define which property is being exported we can add a `transform` method. This method receives a view instance and must return an object containing the values that are then sent to the original component. The next example introduces the `TaskCounter` component, a component that will render he amount of tasks in the list.
 
 <br>
 ```javascript
-var React = require('react');
-var Prism = require('backbone.prism');
+//File: TaskCounter.jsx
+import React from 'react';
+import Prism from 'backbone.prism';
 
-var Counter = React.createClass({
-    mixins: [Prism.ViewMixin],
-    
-    transform: function (view) {
+class TaskCounter extends React.Component {
+    transform(view) {
         return {
             total: view.length
         };
-    },
+    }
     
-    render: function () {
+    render() {
         return (
-            <div className="counter">{this.state.total}</div>
+            <p>{this.props.total}</p>
+        ):
+    }
+}
+
+export default Prism.compose(React, TaskCounter);
+```
+
+<br>
+Time to add the component to our app. Both `TaskList` and `TaskCounter` can share the same view.
+
+<br>
+```javascript
+//File: TasksApp.jsx
+import React from 'react';
+import store from './store';
+import TaskList from './TaskList.jsx';
+import TaskCounter from './TaskCounter.jsx';
+import TaskForm from './TaskForm.jsx';
+
+let view = store.getDefaultView();
+
+class TasksApp extends React.Component {
+    render() {
+        return (
+            <div>
+                <TaskList view={view} />
+                <TaskCounter view={view} />
+                <TaskForm />
+            </div>
         );
     }
-});
+}
 
-module.exports = Counter;
+export default TasksApp;
 ```
+
 
 <br>
 ###Mutators
@@ -612,34 +643,34 @@ module.exports = StatusFilter;
 > *Don't communicate by sharing state. Share state by communicating.*
 
 <br>
-*Prism* includes [Backbone.Radio](https://github.com/marionettejs/backbone.radio "") (an extension mantained by the [Marionette.js](http://marionettejs.com/ "") team) and introduces the *Prism.Channel* class, a class featuring a full messaging API that can be used to communicate state between components. This example shows the implementation of a component using a channel to synchronize their state.
+*Prism* includes [Backbone.Radio](https://github.com/marionettejs/backbone.radio "") (an extension mantained by the [Marionette.js](http://marionettejs.com/ "") team) and introduces the `Prism.Channel` class, a class featuring a full messaging API that can be used to communicate state between components. This example shows the implementation of a component using a channel to synchronize their state.
 
 <br>
 ```javascript
-var React = require('react');
-var Prism = require('backbone.prism');
-var store = require('./store');
-var SomeComponent = require('./SomeComponent.jsx');
-var AnotherComponent = require('./AnotherComponent.jsx');
+//File: ChannelComponent.jsx
+import React from 'react';
+import {Channel} from 'backbone.prism';
+import EmitterComponent from './EmitterComponent.jsx';
+import ListenerComponent from './ListenerComponent.jsx';
 
-var ParentComponent = React.createClass({
-    getDefaultProps: function () {
-        return {
-            channel: new Prism.Channel() // Initialize channel instance
-        };
-    },
+class ChannelComponent extends React.Component {
+    constructor(props) {
+        super(props);
+        this.channel = new Channel();
+        this.channel.reply('initialize', { clicked: 0 });
+    }
     
-    render: function () {
+    render() {
         return (
-            <div className="container">
-                <SomeComponent channel={this.props.channel} />
-                <AnotherComponent channel={this.props.channel} />
+            <div>
+                <EmitterComponent channel={this.channel} />
+                <ListenerComponent channel={this.channel} />
             </div>
         );
     }
-});
+}
 
-module.exports = ParentComponent;
+export default MainComponent;
 ```
 
 <br>
@@ -648,63 +679,63 @@ Whenever a new state is applied we communicate it to the listener component. In 
 
 <br>
 ```javascript
-var React = require('react');
+//File: EmitterComponent.jsx
+import React from 'react';
 
-var SomeComponent = React.createClass({
-    getInitialState: function () {
-        return {
-            clicked: 0
-        };
-    },
+class EmitterComponent extends React.Component {
+    contructor(props) {
+        super(props);
+        this.state = this.props.channel.request('initialize');
+    }
     
-    handleClick: function (e) {
+    handleClick(e) {
         e.preventDefault();
         
-        var channel = this.props.channel;
-        var clicked = this.state.clicked + 1;
-        this.setState({clicked: clicked}, (function () {
-            channel.trigger('update:clicked', this.state.clicked);
-        }).bind(this));
-    },
+        let channel = this.props.channel;
+        let clicked = this.state.clicked + 1;
+        this.setState({clicked}, () => {
+            channel.trigger('update:clicked', clicked);
+        });
+    }
     
-    render: function () {
+    render() {
         return (
-            <button onClick={this.handleClick}>Click me</button>
+            <button onClick={this.handleClick.bind(this)}>Click me</button>
         );
     }
-});
+}
 
-module.exports = SomeComponent;
+export default EmitterComponent;
 ```
 
 <br>
-The listener component defines a receiver callback using the *on* method. Channels also include the *request* and *reply* methods.
+The listener component defines a receiver callback using the *on* method. Notice that we're also using *request* and *reply* to initialize both components.
 
 <br>
 ```javascript
-var React = require('react');
+//File: ListenerComponent.jsx
+import React from 'react';
 
-var AnotherComponent = React.createClass({
-    getInitialState: function () {
-        return {
-            clicked: 0
-        };
-    },
+class ListenerComponent extends React.Component {
+    contructor(props) {
+        super(props);
+        this.state = this.props.channel.request('initialize');
+    }
     
-    componentDidMount: function () {
-        this.props.channel.on('update:clicked', (function (clicked) {
-            this.setState({clicked: clicked});
+    componentDidMount() {
+        this.props.channel.on('update:clicked', (clicked => {
+            this.setState({clicked});
         }).bind(this));
-    },
+    }
     
-    render: function () {
+    render() {
         return (
             <span>Clicks: {this.state.clicked}</span>
         );
     }
-});
+}
 
-module.exports = AnotherComponent;
+export default ListenerComponent;
 ```
 
 
