@@ -14,6 +14,7 @@ Flux architecture for Backbone.js
 Backbone.Prism is a *Backbone.js* extension that provides additional classes for implementing a [Flux](https://facebook.github.io/flux/ "") architecture that combines [Backbone.js](http://backbonejs.org/ "") and [React](https://facebook.github.io/react/ "").
 
 <br>
+>Notice that this documentation uses *ES6* syntax. You'll need something like [Babel](http://babeljs.io/ "") to run the examples. If you're unsure of how to write your components in ES6 make sure to read this [post](http://www.tamas.io/react-with-es6/ "") by Tamas Piros.
 
 <br>
 ###Installation
@@ -30,9 +31,6 @@ Backbone.Prism is a *Backbone.js* extension that provides additional classes for
 
 <br>
 ###Stores
-
-<br>
->Notice that this documentation uses *ES6* syntax. You'll need something like [Babel](http://babeljs.io/ "") to run the examples. If you're unsure of how to write your components in ES6 make sure to read this [post](http://www.tamas.io/react-with-es6/ "") by Tamas Piros.
 
 <br>
 According to the designers of *Flux*, a store *"contains the application state and logic"*. This same approach is implemented through the `Prism.Store` class, which extends `Backbone.Collection`.
@@ -63,7 +61,7 @@ The `Prism.State` class is to `Backbone.Model` what `Prism.Store` is to `Backbon
 import {State} from 'backbone.prism';
 
 let Profile = State.extend({
-    url: 'profile/'
+    url: '/profile'
 });
 ```
 
@@ -89,15 +87,25 @@ It's time to define some *actions*. Let's start by building a simple store. As e
 <br>
 ```javascript
 //File: store.js
+import {Model} from 'backbone';
 import {Store} from 'backbone.prism';
 import dispatcher from './dispatcher';
 
-let store = new Store([
-    { title: 'Do some coding', priority: 3 },
-    { title: '(Actually) make some tests', priority: 2 },
-    { title: 'Check out that cool new framework', priority: 1 },
-    { title: 'Make some documentation', priority: 1 },
-    { title: 'Call Saoul', priority: 3 }
+let Task = Model.extend({
+    urlRoot: '/tasks'
+});
+
+let TaskStore = Store.extend({
+    model: Task,
+    url: '/tasks'
+});
+
+let store = new TaskStore([
+    new Task({ title: 'Do some coding', priority: 3 }),
+    new Task({ title: '(Actually) make some tests', priority: 2 }),
+    new Task({ title: 'Check out that cool new framework', priority: 1 }),
+    new Task({ title: 'Make some documentation', priority: 1 }),
+    new Task({ title: 'Call Saoul', priority: 3 })
 ]);
 
 store.dispatchToken = dispatcher.register(payload => {
@@ -105,7 +113,7 @@ store.dispatchToken = dispatcher.register(payload => {
 	
 	switch (action.type) {
 		case 'add-task':
-			store.add(action.data);
+			store.add(new Task(action.data));
 		break;
 				
 		default:
@@ -121,7 +129,7 @@ We need to provide a dead-simple interface to those actions. A simple mixin will
 <br>
 ```javascript
 //File: actions.js
-import dispatcher from 'dispatcher';
+import dispatcher from './dispatcher';
 
 let TaskActions = {
     addTask(task) {
@@ -142,10 +150,10 @@ That's it for now. In order to progress further we need to introduce the main co
 ###Views
 
 <br>
-Mutability is a b\*tch, so instead of messing around with models and collections we'll introduce the concept of *view*. These views don't have anything to do with the `Backbone.View` class you love so much. Think at them more like the views you find in relational databases like MySQL or PostgreSQL. Views in RDBMS are an extremely useful feature because they allow to generate a subset of entities for a given criteria. *Backbone.Prism* allows a similar approach and allows features like ordering and filtering in a simple manner. Things that are important to understand about views:
+Mutability is a b\*tch, so instead of messing around with models and collections we'll introduce the concept of *view*. These views don't have anything to do with the `Backbone.View` class. Think at them more like the views you find in relational databases like MySQL or PostgreSQL. Views in RDBMS are an extremely useful feature because they allow to generate a subset of entities for a given criteria. *Backbone.Prism* allows a similar approach and allows features like ordering and filtering in a simple manner. Things that are important to understand about views:
 
  * Views are created from instances of `Prism.Store` and `Prism.State`.
- * They don't have anything to do with `Backbone.Views` (we will use React for rendering HTML).
+ * They aren't related to the `Backbone.View` class (we will use React for rendering HTML).
  * Views keep a collection of values/attributes that are immutable.
  * Views listen for changes in their parent store/state. When a change event is triggered they generate a new list of values/attributes.
 
@@ -208,7 +216,7 @@ We've now implemented all elements required for a *Flux* architecture. The only 
 #####Higher-Order Components
 
 <br>
-We'll start by declaring a component that will render a list of items. The `TaskList` component will receive a view instance containing a list of tasks and render it using a simple unordered list.
+We'll start by implementing the `TaskList` class, a component that will receive a view instance containing a list of tasks and render it using a simple unordered list.
 
 <br>
 ```javascript
@@ -218,17 +226,19 @@ import Prism from 'backbone.prism';
 
 class TaskList extends React.Component {
     render() {
-        if (!this.props.view) {
+        if (!this.props.view.isInitialized()) {
 			return (<p>Loading data...</p>);
 		}
 		
+        let values = this.props.values();
+        let view = values.view;
         let renderer = model => (<li key={model.cid}>{model.title}</li>);
         
         return (
             <ul>
-                {this.props.view.map(renderer)}
+                {view.map(renderer)}
             </ul>
-        )
+        );
     }
 }
 
@@ -236,16 +246,17 @@ export default Prism.compose(React, TaskList);
 ```
 
 <br>
-First things first: Our render method checks if a property name `view` is available. When false, we print a *'Loading data'* message. In a real world application you might want to fetch some server data before doing stuff. This is a nice approach and prevents errors during initialization.
-Then we create a function (using the *fat-arrow* syntax) which will render all out tasks. The *view* property is a JSON representation of the entire collection with some slight modifications. For example, notice that we're setting the *key* prop to the corresponding model *cid*. This property is added to each element when exported from a view. Finally we use `map` to apply our render function to each model.
-The `Prism.compose` method call you see at the end returns a wrapper class for a given component. This method expects the React object and the component class. This new class is known as **Higher-Order Component** and adds some necessary features to make everything work. The class returned by this method adds the following behaviour:
+First things first: Our render method checks if a property name `view` is initialized. This ensures that the view instance is synchronized against the store. When false, we print a default *'Loading data'* message. In a real world application you might want to fetch some server data before doing stuff. This is a nice approach and prevents errors during initialization.<br>
+If the view is correctly initialized a special method called `values` is injected in `props`. Values obtained from that method are generated before the component is rendered and can contain different representations of the view instance.<br>
+We then define a render function using the *fat-arrow* syntax. The *view* property available in *values* is a JSON representation of the entire view with some slight modifications. For example, notice that we're setting the *key* prop to the corresponding model *cid*. This property is added to each element when exported from a view. Finally we use `map` to apply our render function to each model.
+The `Prism.compose` method call you see at the end returns a wrapper class for a given component. This method expects the React object and the component class. This new class is known as **Higher-Order Component** and adds some necessary features to make everything work:
 
  * Starts listening for any `sync` event in the view. Changes made to a view will re-render the component.
- * Adds the `mergeState` method which is used to set a new state without triggering a re-render.
+ * When a change event is triggered, it will update its state. State vars are then made available to the original component through the `values` method.
  * Removes listeners when unmounted.
 
 <br>
-If you want to now more about **Higher-Order Components** check out this [post](https://medium.com/@dan_abramov/mixins-are-dead-long-live-higher-order-components-94a0d2f9e750 "") by Dan Abramov.
+By default, the **Higher-Order Component** keeps a JSON representation of the view in the *view* state var, but this behavior can be modified. If you want to now more about **Higher-Order Components** check out this [post](https://medium.com/@dan_abramov/mixins-are-dead-long-live-higher-order-components-94a0d2f9e750 "") by Dan Abramov.
 
 <br>
 #####Using views
@@ -292,7 +303,7 @@ The following diagram tries to explain how *Backbone.Prism* works under the hood
  * An action is executed that modifies the store. A *change* event is triggered.
  * The view synchonizes its data with the store. A *sync* event is triggered.
  * The higher-order component updates its *view* state var. This causes the component to re-render.
- * Our original component is rendered. It receives the higher-order component state as props.
+ * Our original component is rendered.
 
 <br>
 ###The TaskApp component
@@ -381,13 +392,15 @@ import store from './store';
 import TaskList from './TaskList.jsx';
 import TaskForm from './TaskForm.jsx';
 
-let view = store.getDefaultView();
-
 class TasksApp extends React.Component {
+    componentWillMount() {
+        this.view = store.getDefaultView();
+    }
+    
     render() {
         return (
             <div>
-                <TaskList view={view} />
+                <TaskList view={this.view} />
                 <TaskForm />
             </div>
         );
@@ -398,19 +411,10 @@ export default TasksApp;
 ```
 
 <br>
-For an extra credit, let's show our list ordered by *title*. This can be achieved by defining a *comparator* option when creating the view.
-
-```javascript
-let view = store.getDefaultView({
-    comparator: 'title'
-});
-```
-
-<br>
 ###Transformations
 
 <br>
-By default, the `TaskList` component receives a *view* property with a JSON representation of the view. In order to define which property is being exported we can add a `transform` method. This method receives a view instance and must return an object containing the values that are then sent to the original component. The next example introduces the `TaskCounter` component, a component that will render he amount of tasks in the list.
+Until now we've seen that the value imported from the higher-order component consist in a single object containing a *view* property the corresponding JSON representation. In order to tell the component which property must be exported we'll define a `transform` method. This method receives a view instance and returns an object containing the values that are then sent to the component. The next example introduces the `TaskCounter` component, a component that will render the amount of tasks in the list.
 
 <br>
 ```javascript
@@ -426,8 +430,10 @@ class TaskCounter extends React.Component {
     }
     
     render() {
+        let values = this.props.values();
+        
         return (
-            <p>{this.props.total}</p>
+            <p>Total: {values.total}</p>
         ):
     }
 }
@@ -436,7 +442,7 @@ export default Prism.compose(React, TaskCounter);
 ```
 
 <br>
-Time to add the component to our app. Both `TaskList` and `TaskCounter` can share the same view.
+Time to add the component to our app. Both `TaskList` and `TaskCounter` can share the same view instance.
 
 <br>
 ```javascript
@@ -447,14 +453,16 @@ import TaskList from './TaskList.jsx';
 import TaskCounter from './TaskCounter.jsx';
 import TaskForm from './TaskForm.jsx';
 
-let view = store.getDefaultView();
-
 class TasksApp extends React.Component {
+    componentWillMount() {
+        this.view = store.getDefautView();
+    }
+    
     render() {
         return (
             <div>
-                <TaskList view={view} />
-                <TaskCounter view={view} />
+                <TaskList view={this.view} />
+                <TaskCounter view={this.view} />
                 <TaskForm />
             </div>
         );
@@ -469,92 +477,103 @@ export default TasksApp;
 ###Mutators
 
 <br/>
-Mutators are objects that can modify how a *StoreView* is generated from a *Store*. Their main purpose is being able to apply filters and comparators to a set of models by setting the view configuration appropriately. A store view supports the following list of options:
+Mutators are objects that define how a view is generated from a store instance. They allow to change a view configuration values during runtime. A store view supports the following options:
 
-<br/>
- * **offset**: The amount of models to skip from the beginning of the list.
- * **size**: The amount of models to obtain. When negative, models will be taken from the end of the list.
- * **comparator**: A comparator function/field.
- * **filter**: The default filter.
- * **filters**: An object containing a list of additional filters.
+ * comparator: A model field or a comparator function.
+ * filter: A filter function or an object with the desired criteria to apply to the collection.
+ * offset: The amount of elements to skip from the beginning of the collection.
+ * size: The total amount of elements to obtain. When negative, elements will be taken from the end of the collection.
 
 <br>
-These options could be defined when initializing a view. The following example shows a view having a capacity of 5 models ordered by priority.
+These options could be defined when initializing a view. The following example shows a view having a size of 5 elements ordered by priority.
 
 <br>
 ```javascript
-var store = require('./store');
+import store from './store';
 
-var view = store.createView({
+let view = store.createView({
     size: 5,
     comparator: 'priority'
 });
-
-module.exports = view;
 ```
 
 <br>
-Mutators are generated within components and allow us to change those options during runtime. A mutator is created by invoking the *createMutator* method. This method expects a callback and a component instance. The callback is executed using the component instance as its context and must return a list of options that are later merged into the view.
+Mutators are generated within components through the `createMutator` method. This method expects a callback and a context variable. The callback is executed using the context provided (usually the component itself) and must return a list of options that are later merged into the view. For our first example we'll implement the `TaskPaginator` component. This component will provide a pagination mechanism for our task list.
 
 <br>
 ```javascript
-var React = require('react');
+import React from 'react';
+import Prism from 'backbone.prism'
+import Underscore from 'underscore';
 
-var Paginator = React.createClass({
-    getInitialState: function () {
-        return {
+class TaskPaginator extends React.Component {
+    constructor(props) {
+        super(props);
+        
+        this.state = {
             page: 1
         };
-    },
+    }
 
-    componentDidMount: function () {
-        var view = this.props.view;
+    componentWillMount() {
+        let view = this.props.view;
+        this.store = view.parent
         
-        this.pager = view.createMutator(function () {
-            var page = this.state.page;
-            var pageSize = this.props.pageSize;
+        this.paginator = view.createMutator(() {
+            let page = this.state.page;
+            let pageSize = this.props.pageSize;
             
-            // Set view bounds
             return {
                 offset: pageSize * (page - 1),
                 size: pageSize
             };
         }, this);
-    },
-
-    componentWillUnmount: function () {
-        this.pager.destroy();
-    },
-    
-    render: function () {
-        // ...
     }
-});
+    
+    componentWillUnmount() {
+        this.paginator.destroy();
+    }
+    
+    handlePageClick(e) {
+        e.preventDefault();
 
-module.exports = Paginator;
-```
-
-<br>
-In order to refresh the view's content, we provide an additional argument to *setState* using the callback returned by the mutator's *update* method. This method returns a function that will call the corresponding callback using the current component as the context. The mutator will then trigger an *apply* event that will refresh the view.
-
-<br>
-```javascript
-handlePageChange: function (page) {
-    this.setState({page: page}, this.pager.update());
+        // Update state silently and evaluate mutator
+        this.paginator.update(this, {page: +e.target.innerHTML});
+    }
+    
+    render() {
+        if (!this.props.view.isInitialized()) {
+            return (<div></div>);
+        }
+        
+        if (this.store.length <= this.props.pageSize) {
+            return (
+                <div>
+                    <span>1</span>
+                </div>
+            );
+        }
+        
+        let pages = Math.ceil(this.store.length / this.props.pageSize);
+        let renderer = (page => {
+            return (
+                <a key={page} href="#" onClick={this.handlePageClick.bind(this)}>{page + 1}</a>
+            );
+        }).bind(this);
+        
+        return (
+            <div>
+                {Underscore(pages).times(renderer)}
+            </div>
+        );
+    }
 }
+
+export default Prism.compose(React, TaskPaginator);
 ```
 
 <br>
-What if the component uses the *Prism.ViewMixin*? Wouldn't that produce a double render? That could happen if a component includes *ViewMixin* and the view being modified by the mutator is the same that is being received as a property. In order to prevent this we can use the *mergeState* method.
-
-<br>
-```javascript
-handleClick: function () {
-    // merge state without triggering render
-    // updates view after 'apply' is triggered
-    this.mergeState({page: 2}, this.pager.update());
-}
-```
+The `TaskPaginator` components starts by defining its initial state. The only required value is the current page number. Then it proceeds to initialize a mutator instance by providing a function that returns the set of options that we're interested, in this case, the *size* and *offset* values. Notice that we're storing a reference to the original store in order to know the total amount of pages available. When rendering the element, we again check if the view is initialized correctly. We calculate the amount of pages and define a render function. We finally use the `times` helper function to render a link for each page. In order to update the component state we use the `update` method in the mutator instance. This method updates the component state without triggering a re-render. This is done on purpose because the paginator needs to trigger an event in order to tell the view that it must update its contents. The paginator is evaluated and then it triggers a *apply* event which updates the view with the current configuration.
 
 <br>
 ### Comparators and Filters
