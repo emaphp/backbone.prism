@@ -141,7 +141,9 @@
             this.callback = callback;
             
             // On start, apply changes to view but don't trigger an event
-            parent.on('start', this.update(true));
+            parent.on('start', (function () {
+				this.apply(true);
+			}).bind(this));
         },
         
         // Applies modifications to a view instance
@@ -151,12 +153,11 @@
             this.trigger('apply');
         },
         
-        // Returns a callback that applies the current mutator
-        update: function (silent) {
-            return (function () {
-                this.apply(silent);
-            }).bind(this);
-        }
+        //Updates a component state and applies the mutator
+        update: function (component, state, silent) {
+			_.extend(component.state, state);
+			this.apply(silent);
+		}
     });
     
     Prism.ViewMutator = ViewMutator;
@@ -200,6 +201,11 @@
     var ViewBaseMixin = _.extend({
         mutators: {},
         
+        // Determines is the view is initialized
+        isInitialized: function () {
+			return !!this._isInitialized;
+		},
+		
         // Returns a new ViewMutator instance
         createMutator: function (callback, context) {
             var mutator = new ViewMutator(this, context, callback);
@@ -226,6 +232,11 @@
         },
 
         _isActive: false,
+        
+        // Determines if the view is active
+        isActive: function () {
+			return !!this._isActive;
+		},
 
         // Deactivates store event listener
         sleep: function () {
@@ -289,8 +300,9 @@
             this.trigger('start');
             
             // Listen for changes
-            this.wakeup();
+            this.wakeup(false);
             this._isInitialized = true;
+            this.sync();
         });
         
         this.initialize.apply(this, arguments);
@@ -301,6 +313,7 @@
         initialize: function () {},
 
         sync: function () {
+			if (!this._isActive) return;
             this.attributes = _.extend({cid: this.parent.cid}, this.parent.attributes);
             this.trigger('sync');
         },
@@ -372,8 +385,9 @@
             this.trigger('start');
 
             // Synchronize models
-            this.wakeup();
+            this.wakeup(false);
             this._isInitialized = true;
+            this.sync();
         });
         
         // Initialize instance
@@ -386,6 +400,7 @@
         
         // Synchronizes models against the store
         sync: function () {
+			if (!this._isActive) return;
             this.models = _.clone(this.parent.models);
             
             // Apply default filter
@@ -572,14 +587,13 @@
 	
 	Prism.compose = function (React, Component, onSync) {
 		var wrapper = React.createClass({
-			componentDidMount: function () {
+			componentWillMount: function () {
 				// Update state when view changes
-				var self = this;
 				this.listenTo(this.props.view, 'sync', function () {
 					if (_.isFunction(onSync)) {
-						onSync(self, this.props.view, Component, arguments);
+						onSync(this, this.props.view, Component, arguments);
 					} else {
-						defaultOnSync(self, this.props.view, Component);
+						defaultOnSync(this, this.props.view, Component);
 					}
 				});
 			},
@@ -589,17 +603,20 @@
 				this.stopListening(this.props.view, 'sync');
 			},
 			
-			//Sets component state without re-draw
-			mergeState: function (state, callback) {
-				_.extend(this.state, state);
-				if (callback) {
-					callback();
-				}
-			},
-			
 			render: function () {
+				var self = this;
+				var props = {
+					values: function (key) {
+						if (key !== undefined) {
+							return self.state[key];
+						}
+						
+						return self.state ? self.state : {};
+					}
+				};
+				
 				//Render wrapper component
-				return React.createElement(Component, _.extend({}, this.props, this.state));
+				return React.createElement(Component, _.extend(props, this.props));
 			}
 		});
 		
