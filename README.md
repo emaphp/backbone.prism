@@ -516,11 +516,8 @@ class TaskPaginator extends React.Component {
         };
     }
 
-    componentWillMount() {
-        let view = this.props.view;
-        this.store = view.parent
-        
-        this.paginator = view.createMutator(() => {
+    componentWillMount() {        
+        this.paginator = this.props.target.createMutator(() => {
             let page = this.state.page;
             let pageSize = this.props.pageSize;
             
@@ -547,7 +544,7 @@ class TaskPaginator extends React.Component {
             return (<div></div>);
         }
         
-        if (this.store.length <= this.props.pageSize) {
+        if (this.props.view.length <= this.props.pageSize) {
             return (
                 <div>
                     <span>1</span>
@@ -555,7 +552,7 @@ class TaskPaginator extends React.Component {
             );
         }
         
-        let pages = Math.ceil(this.store.length / this.props.pageSize);
+        let pages = Math.ceil(this.props.view.length / this.props.pageSize);
         let renderer = (page => {
             return (
                 <a key={page} href="#" onClick={this.handlePageClick.bind(this)}>{page + 1}</a>
@@ -574,7 +571,8 @@ export default Prism.compose(React, TaskPaginator);
 ```
 
 <br>
-The `TaskPaginator` components starts by defining its initial state. The only required value is the current page number. Then it proceeds to initialize a mutator instance by providing a function that returns the set of options that we're interested, in this case, the *size* and *offset* values. Notice that we're storing a reference to the original store in order to know the total amount of pages available. When rendering the element, we again check if the view is initialized correctly. We calculate the amount of pages and define a render function. We finally use the `times` helper function to render a link for each page. In order to update the component state we use the `update` method in the mutator instance. This method updates the component state without triggering a re-render. This is done on purpose because the paginator needs to trigger an event in order to tell the view that it must update its contents. The paginator is evaluated and then it triggers a *apply* event which updates the view with the current configuration. It's time to add this component to our app.
+The `TaskPaginator` component starts by defining its initial state. The only required value is the current page number. Then it proceeds to initialize a mutator instance by providing a function that returns the options to update. This component receives 2 views: A main view, which is required to know how many pages are available; and the *target* view, which is the one that is associated to the mutator. Pagination components are a good example of elements that listen to a view and affect others.<br>
+When rendering the element, we again check if the view is initialized correctly. We calculate the amount of pages and define a render function. We finally use the `times` helper function to render a link for each page. In order to update the component state we invoke the `update` method in the mutator instance. This method updates the component state without triggering a re-render. This is done on purpose because the paginator needs to trigger an event in order to tell the view that it must update its contents. The paginator is evaluated and then it triggers a *apply* event which updates the view with the new configuration. We can now include this component to the `TaskApp` class.
 
 <br>
 ```javascript
@@ -588,15 +586,22 @@ import TaskPaginator from './TaskPaginator.jsx';
 
 class TasksApp extends React.Component {
     componentWillMount() {
-        this.view = store.getDefautView();
+        this.mainView = store.createView({
+            name: 'main'
+        });
+        
+        this.paginatedView = this.mainView.createView({
+            name: 'paginated',
+            listenTo: 'sync'
+        });
     }
     
     render() {
         return (
             <div>
-                <TaskList view={this.view} />
-                <TaskPaginator view={this.view} />
-                <TaskCounter view={this.view} />
+                <TaskList view={this.paginatedView} />
+                <TaskPaginator view={this.mainView} target={this.paginatedView} pageSize={3}/>
+                <TaskCounter view={store.getDefaultView()} />
                 <TaskForm />
             </div>
         );
@@ -605,6 +610,9 @@ class TasksApp extends React.Component {
 
 export default TasksApp;
 ```
+
+<br>
+As explained before, now our app needs to manage 2 views. The *paginatedView* property is in fact a **subview**, that is, a child view created from a view instance. Notice that we're specifying the *listenTo* option to *'sync'*. This is something required for all subviews or else it won't update accordingly.
 
 <br>
 ### Comparators
@@ -629,7 +637,7 @@ class TaskOrderPicker extends React.Component {
 	}
 	
 	componentWillMount() {
-		this.comparator = this.props.view.createComparator(() => {
+		this.comparator = this.props.target.createComparator(() => {
 			let desc = this.state.desc;
 			let field = this.state.field;
 			
@@ -667,7 +675,39 @@ class TaskOrderPicker extends React.Component {
 export default TaskOrderPicker;
 ```
 <br>
-Comparators are created through the `createComparator` method. This method expects a function returning a string or a comparator function plus a context variable.
+Comparators are created through the `createComparator` method. This method expects a function returning a string or a comparator function plus a context variable. Finally, we update the `TaskApp` class to include our newly created component.
+
+<br>
+```javascript
+//File: TasksApp.jsx
+import React from 'react';
+import store from './store';
+import TaskList from './TaskList.jsx';
+import TaskCounter from './TaskCounter.jsx';
+import TaskForm from './TaskForm.jsx';
+import TaskPaginator from './TaskPaginator.jsx';
+import TaskOrderPicker from './TaskOrderPicker.jsx';
+
+class TasksApp extends React.Component {
+    componentWillMount() {
+        this.view = store.getDefautView();
+    }
+    
+    render() {
+        return (
+            <div>
+                <TaskList view={this.view} />
+                <TaskPaginator view={this.view} pageSize={3}/>
+                <TaskOrderPicker target={this.view} />
+                <TaskCounter view={this.view} />
+                <TaskForm />
+            </div>
+        );
+    }
+}
+
+export default TasksApp;
+```
 
 <br>
 ### Channels
@@ -773,7 +813,59 @@ export default ListenerComponent;
 
 
 <br>
-###Filters
+###Subviews
+
+<br>
+Before adding filters to our app we need to introduce a few changes to the `TaskApp` component. In order to separate which elements are filtered and which are shown we'll declare 2 views:
+
+ * The *filtered* view will keep the models that satisfy a given filter. We need this to know how many pages are available so the `TaskPaginator` component so it can render them appropiately.
+ * The *paginated* view is the one used by the `TaskList` component and the one associated with the pagination mutator.
+
+We'll also include a channel instance. This channel will a
+
+```javascript
+//File: TasksApp.jsx
+import React from 'react';
+import {Channel} from 'backbone.prism';
+import store from './store';
+import TaskList from './TaskList.jsx';
+import TaskCounter from './TaskCounter.jsx';
+import TaskForm from './TaskForm.jsx';
+import TaskPaginator from './TaskPaginator.jsx';
+import TaskOrderPicker from './TaskOrderPicker.jsx';
+
+class TasksApp extends React.Component {
+    componentWillMount() {
+        this.filteredView = store.createView({
+            name: 'filtered'
+        });
+        
+        this.paginatedView = this.filteredView.createView({
+            name: 'paginated',
+            listenTo: 'sync'
+        });
+        
+        this.resetChannel = new Channel();
+    }
+    
+    render() {
+        return (
+            <div>
+                <TaskList view={this.paginatedView} />
+                <TaskPaginator view={this.filteredView} target={this.paginatedComponent} pageSize={3}/>
+                <TaskOrderPicker target={this.filteredView} />
+                <TaskCounter view={store.getDefaultView()} />
+                <TaskForm />
+            </div>
+        );
+    }
+}
+
+export default TasksApp;
+```
+<br>
+
+
 
 <br>
 Filters, unsurprisingly, are created through the *createFilter* method. The associated callback must return a function receiving a single model as argument.
