@@ -94,4 +94,25 @@ describe('Prism.StateView tests', function() {
         expect(listener.callback).toHaveBeenCalled();
         expect(view.options.display).toBe('align-right');
     });
+    
+    it('Should update subview', function () {
+        var State = Backbone.Prism.State.extend({
+            name: 'state'
+        });
+
+        var state = new State({name: 'emaphp', role: 'developer'});
+        var view = state.createView({
+            name: 'view'
+        });
+        var subview = view.createView({
+			name: 'subview',
+			listenTo: 'sync'
+		});
+		
+		state.start();
+		expect(view.attributes.name).toBe('emaphp');
+		expect(view.attributes.cid).toBe(state.cid);
+		expect(subview.attributes.name).toBe('emaphp');
+		expect(subview.attributes.cid).toBe(view.attributes.cid);
+	});
 });

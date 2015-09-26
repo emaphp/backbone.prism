@@ -16,7 +16,6 @@ describe('Prism.StateView tests', function() {
         expect(view._isInitialized).toBe(true);
         expect(view.models).toBeDefined();
         expect(view.length).toBe(2);
-        expect(view.size).toBe(2);
         expect(store.at(0).get('name')).toBe('Ralph');
         expect(store.at(0).get('specie')).toBe('dog');
         expect(store.at(1).get('name')).toBe('Lucy');
@@ -216,4 +215,98 @@ describe('Prism.StateView tests', function() {
         expect(listener.callback.calls.count()).toBe(3);
         expect(view.models.length).toBe(4);
     });
+    
+    it('Should return subview instance', function () {
+		var Store = Backbone.Prism.Store.extend({
+            name: 'store'
+        });
+
+        var store = new Store([{name: 'Ralph', specie: 'dog'}, {name: 'Lucy', specie: 'cat'}]);
+        var view = store.createView({
+            name: 'test'
+        });
+        var subview = view.createView({
+			name: 'subview'
+		});
+		
+		expect(subview.parent).toBe(view);
+		expect(view.views['subview']).toBe(subview);
+	});
+	
+	it('Should update subview', function () {
+		var Store = Backbone.Prism.Store.extend({
+            name: 'store'
+        });
+
+        var store = new Store([{name: 'Ralph', specie: 'dog'}, {name: 'Lucy', specie: 'cat'}]);
+        var view = store.createView({
+            name: 'test'
+        });
+        var subview = view.createView({
+			name: 'subview',
+			listenTo: 'sync'
+		});
+		
+		store.start();
+		expect(view.length).toBe(2);
+		expect(subview.length).toBe(2);
+		
+		store.add({name: 'Truman', specie: 'parrot'});
+		expect(store.length).toBe(3);
+		expect(view.length).toBe(3);
+		expect(subview.length).toBe(3);
+	});
+	
+	it('Should apply view mutators', function () {
+		var Store = Backbone.Prism.Store.extend({
+            name: 'store'
+        });
+
+        var store = new Store([
+			{name: 'Ralph', specie: 'dog', age: 3},
+            {name: 'Lucy', specie: 'cat', age: 5},
+            {name: 'Gex', specie: 'lizard', age: 9},
+            {name: 'Ed', specie: 'horse', age: 7},
+            {name: 'Tom', specie: 'echidna', age: 3},
+            {name: 'Go', specie: 'gopher', age: 2},
+            {name: 'Frank', specie: 'parrot', age: 5}
+        ]);
+        var view = store.createView({
+            name: 'test'
+        });
+        var subview = view.createView({
+			name: 'subview',
+			listenTo: 'sync'
+		});
+		
+		var obj = {
+			mutatorCallback: function () {
+				return {
+					offset: 1,
+					size: 4
+				};
+			}
+		};
+		
+		var viewMutator = view.createMutator(obj.mutatorCallback, null);
+		
+		//
+		var subViewMutator = subview.createMutator(function () {
+			return {
+				size: 3
+			};
+		}, null);
+		
+		var subViewComparator = subview.createComparator(function () {
+			return function (model1, model2) {
+				return model1.get('age') < model2.get('age');
+			};
+		}, null);
+		
+		expect(view.mutators[viewMutator.cid]).toBe(viewMutator);
+		store.start();
+		expect(view.length).toBe(4);
+		expect(subview.length).toBe(3);
+		expect(subview.models[0].get('name')).toBe('Gex');
+	});
 });

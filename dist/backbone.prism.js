@@ -141,7 +141,7 @@
             this.callback = callback;
             
             // On start, apply changes to view but don't trigger an event
-            parent.on('start', (function () {
+            parent.on('wakeup', (function () {
 				this.apply(true);
 			}).bind(this));
         },
@@ -150,7 +150,7 @@
         apply: function (silent) {
             _.extend(this.parent.options, this.callback.call(this.context));
             if (silent === true) return;
-            this.trigger('apply');
+            this.trigger('apply', silent);
         },
         
         //Updates a component state and applies the mutator
@@ -194,12 +194,27 @@
     Prism.ViewFilter = ViewFilter;
     
     //
+    // BaseMixin
+    // ---------
+    // BaseMixin implements common logic used by Prism.State and Prism.Store classes.
+
+    var BaseMixin = {
+        _isInitialized: false,
+
+        // Initializes children views
+        start: function () {
+            this.trigger('start');
+            this._isInitialized = true;
+        }
+    };
+    
+    //
     // ViewBaseMixin
     // -------------
     // ViewBaseMixin implements common logic used by Prism.StateView and Prism.StoreView classes.
 
     var ViewBaseMixin = _.extend({
-        mutators: {},
+		mutators: {},
         
         // Determines is the view is initialized
         isInitialized: function () {
@@ -217,8 +232,8 @@
         // Stores a ViewMutator instance
         _storeMutator: function (mutator) {
             // Apply mutators when something changes
-            this.listenTo(mutator, 'apply', function (state) {
-                this.sync(state);
+            this.listenTo(mutator, 'apply', function (silent) {
+                if (!silent) this.sync();
             });
             
             // Stop listening when destroyed
@@ -231,8 +246,6 @@
             this.mutators[mutator.cid] = mutator;
         },
 
-        _isActive: false,
-        
         // Determines if the view is active
         isActive: function () {
 			return !!this._isActive;
@@ -253,23 +266,14 @@
         }
     }, Backbone.Events);
 
-    //
-    // BaseMixin
-    // ---------
-    // BaseMixin implements common logic used by Prism.State and Prism.Store classes.
-
-    var BaseMixin = {
-        views: {},
-
-        _isInitialized: false,
-
-        // Initializes children views
-        start: function () {
-            this.trigger('start');
-            this._isInitialized = true;
-        },
-
-        // Obtains a view by its name
+	//
+	// ViewableMixin
+	// -------------
+	
+	var ViewableMixin = {
+		views: {},
+		
+		// Obtains a view by its name
         getView: function (name) {
             return this.views[name];
         },
@@ -282,39 +286,89 @@
             
             return this.createView(_.extend(options || {}, { name:'default' }));
         }
-    };
+	};
+
+    //
+    // ViewableStateMixin
+    // ------------------
+    
+    var ViewableStateMixin = {
+		createView: function (options) {
+			options = options || {};
+            var view = new StateView(this, options);
+            view.name = options.name ? options.name : _.uniqueId('view');
+            this.views[view.name] = view;
+
+            // Remove view when destroyed
+            this.listenTo(view, 'destroy', function () {
+                delete this.views[view.name];
+            });
+
+            return view;
+		}
+	};
+	
+	_.extend(ViewableStateMixin, ViewableMixin);
+	
+	//
+	// ViewableStoreMixin
+	// ------------------
+	
+	var ViewableStoreMixin = {
+		// Generates a new StoreView instance
+        createView: function(options) {
+            options = options || {};
+            // Create view instance
+            var view = new StoreView(this, options);
+            view.name = options.name ? options.name : _.uniqueId('view');
+            this.views[view.name] = view;
+            
+            // Remove view when destroyed
+            this.listenTo(view, 'destroy', function () {
+                delete this.views[view.name];
+            });
+            
+            return view;
+        },
+	};
+	
+	_.extend(ViewableStoreMixin, ViewableMixin);
     
     //
     // Prism.StateView
     // ---------------
     // A Prism.StateView instance keeps track of a Prism.State object.
     
-    var StateView = Prism.StateView = function (state, options) {
-        this.parent = state;
+    var StateView = Prism.StateView = function (parent, options) {
+        this.parent = parent;
         this.options = _.extend({}, _.result(this, 'options'), options);
         this.options.listenTo = this.options.listenTo || 'change';
         this._isInitialized = false;
+        this._isActive = false;
         
-        this.listenTo(state, 'start', function () {
+        this.listenTo(parent, 'start', function () {
             // Initialize mutators
-            this.trigger('start');
+            this.trigger('wakeup');
             
             // Listen for changes
             this.wakeup(false);
             this._isInitialized = true;
             this.sync();
+            
+            //Initialize subviews
+            this.trigger('start');
         });
         
         this.initialize.apply(this, arguments);
     };
     
     // Include additional mixins
-    _.extend(StateView.prototype, ViewBaseMixin, {
+    _.extend(StateView.prototype, ViewBaseMixin, ViewableStateMixin, {
         initialize: function () {},
 
         sync: function () {
 			if (!this._isActive) return;
-            this.attributes = _.extend({cid: this.parent.cid}, this.parent.attributes);
+            this.attributes = this.parent.cid ? _.extend({cid: this.parent.cid}, this.parent.attributes) : _.extend({}, this.parent.attributes);
             this.trigger('sync');
         },
         
@@ -326,7 +380,7 @@
     });
     
     StateView.extend = Backbone.Model.extend;
-    
+        
     //
     // Prism.State
     // -----------
@@ -345,34 +399,19 @@
             this.set(attrs, options);
             this.changed = {};
             this.initialize.apply(this, arguments);
-        },
-
-        // Returns a new StateView instance
-        createView: function (options) {
-            options = options || {};
-            var view = new StateView(this, options);
-            view.name = options.name ? options.name : _.uniqueId('view');
-            this.views[view.name] = view;
-
-            // Remove view when destroyed
-            this.listenTo(view, 'destroy', function () {
-                delete this.views[view.name];
-            });
-
-            return view;
         }
-    }, BaseMixin);
+    }, BaseMixin, ViewableStateMixin);
     
     // Build State class
     Prism.State = Backbone.Model.extend(Prism.StateMixin);
-        
+
     //
     // Prism.StoreView
     // ---------------
     // A Prism.StoreView instance keeps track of a Prism.Store object.
 
-    var StoreView = Prism.StoreView = function (store, options) {
-        this.parent = store;
+    var StoreView = Prism.StoreView = function (parent, options) {
+        this.parent = parent;
         this.models = [];
         this.length = 0;
         this._isInitialized = false;
@@ -380,14 +419,17 @@
         this.options.listenTo = this.options.listenTo || 'add remove change reset';
         
         // Initialize with parent store
-        this.listenTo(store, 'start', function () {
+        this.listenTo(parent, 'start', function () {
             // Initialize mutators
-            this.trigger('start');
+            this.trigger('wakeup');
 
             // Synchronize models
             this.wakeup(false);
             this._isInitialized = true;
             this.sync();
+            
+            //Initialize sub-views
+            this.trigger('start');
         });
         
         // Initialize instance
@@ -395,7 +437,7 @@
     };
 
     // Include additional mixins
-    _.extend(StoreView.prototype, ViewBaseMixin, {
+    _.extend(StoreView.prototype, ViewBaseMixin, ViewableStoreMixin, {
         initialize: function () {},
         
         // Synchronizes models against the store
@@ -437,9 +479,6 @@
                     this.models.sort(_.bind(this.options.comparator, this));
                 }
             }
-
-            // Update length
-            this.length = this.models.length;
             
             // Set bounds
             if (this.options.size || typeof this.options.offset !== 'undefined') {
@@ -456,7 +495,7 @@
             }
             
             // Update length
-            this.size = this.models.length;
+            this.length = this.models.length;
             
             // Update associated components
             this.trigger('sync');
@@ -530,41 +569,8 @@
             this.views = {};
             this.initialize.apply(this, arguments);
             if (models) this.reset(models, _.extend({silent: true}, options));
-        },
-
-        // Generates a new StoreView instance
-        createView: function(options) {
-            options = options || {};
-            // Create view instance
-            var view = new StoreView(this, options);
-            view.name = options.name ? options.name : _.uniqueId('view');
-            this.views[view.name] = view;
-            
-            // Remove view when destroyed
-            this.listenTo(view, 'destroy', function () {
-                delete this.views[view.name];
-            });
-            
-            return view;
-        },
-        
-        // Returns a default store view for this instance
-        getDefaultView: function () {
-            if (this.views.default) {
-                return this.views.default;
-            }
-            
-            var view = new StoreView(this, {});
-            view.name = 'default';
-            this.views.default = view;
-            
-            this.listenTo(view, 'destroy', function () {
-                delete this.views.default;
-            });
-            
-            return view;
         }
-    }, BaseMixin);
+    }, BaseMixin, ViewableStoreMixin);
     
     // Build Store class
     Prism.Store = Backbone.Collection.extend(Prism.StoreMixin);

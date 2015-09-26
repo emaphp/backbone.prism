@@ -246,9 +246,9 @@ export default Prism.compose(React, TaskList);
 ```
 
 <br>
-First things first: Our render method checks if a property name `view` is initialized. This ensures that the view instance is synchronized against the store. When false, we print a default *'Loading data'* message. In a real world application you might want to fetch some server data before doing stuff. This is a nice approach and prevents errors during initialization.<br>
+First things first: Our render method checks if a property named `view` is initialized. This ensures that the view instance is synchronized against the store. When false, we print a default *'Loading data'* message. In a real world application you might want to fetch some server data before doing stuff. This is a nice approach and prevents errors during initialization.<br>
 If the view is correctly initialized a special method called `values` is injected in `props`. Values obtained from that method are generated before the component is rendered and can contain different representations of the view instance.<br>
-We then define a render function using the *fat-arrow* syntax. The *view* property available in *values* is a JSON representation of the entire view with some slight modifications. For example, notice that we're setting the *key* prop to the corresponding model *cid*. This property is added to each element when exported from a view. Finally we use `map` to apply our render function to each model.
+The *view* property available in *values* is a JSON representation of the entire view with some slight modifications. For example, notice that in the render function we're setting the *key* prop to the corresponding model *cid*. This property is added to each element when exported from a view. Finally we use `map` to apply our render function to each model.<br>
 The `Prism.compose` method call you see at the end returns a wrapper class for a given component. This method expects the React object and the component class. This new class is known as **Higher-Order Component** and adds some necessary features to make everything work:
 
  * Starts listening for any `sync` event in the view. Changes made to a view will re-render the component.
@@ -414,7 +414,7 @@ export default TasksApp;
 ###Transformations
 
 <br>
-Until now we've seen that the value imported from the higher-order component consist in a single object containing a *view* property the corresponding JSON representation. In order to tell the component which property must be exported we'll define a `transform` method. This method receives a view instance and returns an object containing the values that are then sent to the component. The next example introduces the `TaskCounter` component, a component that will render the amount of tasks in the list.
+Until now we've seen that the value imported from the higher-order component consist in a single object containing a *view* property with the corresponding JSON representation. In order to tell the component which property must be exported we'll define a `transform` method. This method receives a view instance and returns an object containing the values that are then sent to the component. The next example introduces the `TaskCounter` component, a component that will render the amount of tasks in the list.
 
 <br>
 ```javascript
@@ -502,6 +502,7 @@ Mutators are generated within components through the `createMutator` method. Thi
 
 <br>
 ```javascript
+//File: TaskPaginator.jsx
 import React from 'react';
 import Prism from 'backbone.prism'
 import Underscore from 'underscore';
@@ -519,7 +520,7 @@ class TaskPaginator extends React.Component {
         let view = this.props.view;
         this.store = view.parent
         
-        this.paginator = view.createMutator(() {
+        this.paginator = view.createMutator(() => {
             let page = this.state.page;
             let pageSize = this.props.pageSize;
             
@@ -538,7 +539,7 @@ class TaskPaginator extends React.Component {
         e.preventDefault();
 
         // Update state silently and evaluate mutator
-        this.paginator.update(this, {page: +e.target.innerHTML});
+        this.paginator.update({page: +e.target.innerHTML});
     }
     
     render() {
@@ -573,87 +574,100 @@ export default Prism.compose(React, TaskPaginator);
 ```
 
 <br>
-The `TaskPaginator` components starts by defining its initial state. The only required value is the current page number. Then it proceeds to initialize a mutator instance by providing a function that returns the set of options that we're interested, in this case, the *size* and *offset* values. Notice that we're storing a reference to the original store in order to know the total amount of pages available. When rendering the element, we again check if the view is initialized correctly. We calculate the amount of pages and define a render function. We finally use the `times` helper function to render a link for each page. In order to update the component state we use the `update` method in the mutator instance. This method updates the component state without triggering a re-render. This is done on purpose because the paginator needs to trigger an event in order to tell the view that it must update its contents. The paginator is evaluated and then it triggers a *apply* event which updates the view with the current configuration.
-
-<br>
-### Comparators and Filters
-
-<br>
-Comparators and filters extend the *Prism.Mutator* class allowing an easier way to apply changes to a view. Comparators are created through the *createComparator* method. This method receives a callback returning a comparator function.
+The `TaskPaginator` components starts by defining its initial state. The only required value is the current page number. Then it proceeds to initialize a mutator instance by providing a function that returns the set of options that we're interested, in this case, the *size* and *offset* values. Notice that we're storing a reference to the original store in order to know the total amount of pages available. When rendering the element, we again check if the view is initialized correctly. We calculate the amount of pages and define a render function. We finally use the `times` helper function to render a link for each page. In order to update the component state we use the `update` method in the mutator instance. This method updates the component state without triggering a re-render. This is done on purpose because the paginator needs to trigger an event in order to tell the view that it must update its contents. The paginator is evaluated and then it triggers a *apply* event which updates the view with the current configuration. It's time to add this component to our app.
 
 <br>
 ```javascript
-var React = require('react');
+//File: TasksApp.jsx
+import React from 'react';
+import store from './store';
+import TaskList from './TaskList.jsx';
+import TaskCounter from './TaskCounter.jsx';
+import TaskForm from './TaskForm.jsx';
+import TaskPaginator from './TaskPaginator.jsx';
 
-var OrderBar = React.createClass({
-    getInitialState: function () {
-        return {
-            field: 'priority'
-        };
-    },
-
-    componentDidMount: function () {
-        var view = this.props.view;
-
-        this.comparator = view.createComparator(function () {
-            var field = this.state.field;
-
-            return function (model1, model2) {
-                if (field == 'description') {
-                    return model2.get(field) < model1.get(field);
-                }
-
-                return model2.get(field) > model1.get(field);
-            };
-        }, this);
-    },
-
-    componentWillUnmount: function () {
-        this.comparator.destroy();
-    },
+class TasksApp extends React.Component {
+    componentWillMount() {
+        this.view = store.getDefautView();
+    }
     
-    // ...
-});
+    render() {
+        return (
+            <div>
+                <TaskList view={this.view} />
+                <TaskPaginator view={this.view} />
+                <TaskCounter view={this.view} />
+                <TaskForm />
+            </div>
+        );
+    }
+}
 
-module.exports = OrderBar;
+export default TasksApp;
 ```
 
 <br>
-Filters, unsurprisingly, are created through the *createFilter* method. The associated callback must return a function receiving a single model as argument.
+### Comparators
+
+<br>
+In order to introduce this topic we'll implement the `TaskOrderPicker` component. This component will be able to set how our task list is ordered.
 
 <br>
 ```javascript
-var React = require('react');
-var Prism = require('backbone.prism');
+//File: OrderPicker.jsx
+import React from 'react';
+import Prism from 'backbone.prism'
 
-var StatusFilter = React.createClass({
-    mixins: [Prism.ViewMixin],
-    
-    componentDidMount: function () {
-        var view = this.props.mainView;
+class TaskOrderPicker extends React.Component {
+	constructor(props) {
+		super(props);
+		
+		this.state = {
+			field: 'title',
+			desc: false
+		};
+	}
+	
+	componentWillMount() {
+		this.comparator = this.props.view.createComparator(() => {
+			let desc = this.state.desc;
+			let field = this.state.field;
+			
+			return (model1, model2) => {
+				return desc ? model1.get(field) < model2.get(field) : model1.get(field) > model2.get(field);
+			};
+		}, this);
+	}
+	
+	handleInvertOrderClick(e) {
+		e.preventDefault();
+		let desc = !this.state.desc;
+		this.comparator.update({desc});
+	}
+	
+	handleFieldChangeSelect(e) {
+		let field = e.target[e.target.selectedIndex].value;
+		this.comparator.update({field});
+	}
+	
+	render() {
+		return (
+			<div>
+				<button onClick={this.handleInvertOrderClick.bind(this)}>Invert order</button>
+				<br/>
+				Order by: <select onChange={this.handleFieldChangeSelect.bind(this)} defaultValue={this.state.field}>
+					<option value={'priority'}>Priority</option>
+					<option value={'title'}>Title</option>
+				</select>
+			</div>
+		);
+	}
+}
 
-        this.filter = view.createFilter(function () {
-            var filter = this.state.selected;
-
-            return function (model) {
-                switch (filter) {
-                    case 'all': return true;
-                    case 'active': return !model.get('closed');
-                    case 'closed': return model.get('closed');
-                }
-            };
-        }, this);
-    },
-    
-    componentWillUnmount: function () {
-        this.filter.destroy();
-    },
-    
-    // ...
-});
-
-module.exports = StatusFilter;
+export default TaskOrderPicker;
 ```
+<br>
+Comparators are created through the `createComparator` method. This method expects a function returning a string or a comparator function plus a context variable.
 
 <br>
 ### Channels
@@ -757,6 +771,46 @@ class ListenerComponent extends React.Component {
 export default ListenerComponent;
 ```
 
+
+<br>
+###Filters
+
+<br>
+Filters, unsurprisingly, are created through the *createFilter* method. The associated callback must return a function receiving a single model as argument.
+
+<br>
+```javascript
+var React = require('react');
+var Prism = require('backbone.prism');
+
+var StatusFilter = React.createClass({
+    mixins: [Prism.ViewMixin],
+    
+    componentDidMount: function () {
+        var view = this.props.mainView;
+
+        this.filter = view.createFilter(function () {
+            var filter = this.state.selected;
+
+            return function (model) {
+                switch (filter) {
+                    case 'all': return true;
+                    case 'active': return !model.get('closed');
+                    case 'closed': return model.get('closed');
+                }
+            };
+        }, this);
+    },
+    
+    componentWillUnmount: function () {
+        this.filter.destroy();
+    },
+    
+    // ...
+});
+
+module.exports = StatusFilter;
+```
 
 <br>
 ###Demos
