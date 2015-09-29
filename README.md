@@ -865,7 +865,7 @@ class TasksApp extends React.Component {
         return (
             <div>
                 <TaskList view={this.paginatedView} />
-                <TaskPaginator view={this.filteredView} target={this.paginatedComponent} channel={this.channel} pageSize={3}/>
+                <TaskPaginator view={this.filteredView} target={this.paginatedView} channel={this.channel} pageSize={3}/>
                 <TaskOrderPicker target={this.filteredView} />
                 <TaskCounter view={store.getDefaultView()} />
                 <TaskForm />
@@ -1044,7 +1044,7 @@ class TasksApp extends React.Component {
             <div>
                 <TaskFilter target={this.filteredView} channel={} />
                 <TaskList view={this.paginatedView} />
-                <TaskPaginator view={this.filteredView} target={this.paginatedComponent} channel={this.channel} pageSize={3}/>
+                <TaskPaginator view={this.filteredView} target={this.paginatedView} channel={this.channel} pageSize={3}/>
                 <TaskOrderPicker target={this.filteredView} />
                 <TaskCounter view={store.getDefaultView()} />
                 <TaskForm />
