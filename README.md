@@ -73,7 +73,7 @@ The `Prism.Dispatcher` class doesn't add much to the original *Flux* dispatcher 
 
 <br>
 ```javascript
-//File: dispatcher.js
+// File: dispatcher.js
 import {Dispatcher} from 'backbone.prism';
 export default new Dispatcher();
 ```
@@ -86,7 +86,7 @@ It's time to define some *actions*. Let's start by building a simple store. As e
 
 <br>
 ```javascript
-//File: store.js
+// File: store.js
 import {Model} from 'backbone';
 import {Store} from 'backbone.prism';
 import dispatcher from './dispatcher';
@@ -128,7 +128,7 @@ We need to provide a dead-simple interface to those actions. A simple mixin will
 
 <br>
 ```javascript
-//File: actions.js
+// File: actions.js
 import dispatcher from './dispatcher';
 
 let TaskActions = {
@@ -170,13 +170,13 @@ We obtain a new view using the `createView` method.
 ```javascript
 import store from './store';
 
-//Creates a view
+// Creates a view
 let view = store.createView({
-    name: 'main',           //Optional identifier
-    comparator: 'priority'  //Default comparator
+    name: 'main',           // Optional identifier
+    comparator: 'priority'  // Default comparator
 });
 
-//Obtains a view by name
+// Obtains a view by name
 let view = store.getView('main');
 ```
 
@@ -220,18 +220,22 @@ We'll start by implementing the `TaskList` class, a component that will receive 
 
 <br>
 ```javascript
-//File: TaskList.jsx
+// File: TaskList.jsx
 import React from 'react';
 import Prism from 'backbone.prism';
 
 class TaskList extends React.Component {
     render() {
+        // Check if view is initialized
         if (!this.props.view.isInitialized()) {
 			return (<p>Loading data...</p>);
 		}
 		
+        // Obtain a JSON representation of the view
         let values = this.props.values();
         let view = values.view;
+        
+        // Render function
         let renderer = model => (<li key={model.cid}>{model.title}</li>);
         
         return (
@@ -273,18 +277,18 @@ The following code is a simple example of how to achieve this:
 
 <br>
 ```javascript
-//File: main.js
+// File: main.js
 import React from 'react';
 import TaskList from './TaskList.jsx';
 import store from './store';
 
-//Create a default view
+// Create a default view
 let storeView = store.getDefaultView();
 
-//Render list
+// Render list
 React.render(<TaskList view={storeView} />, document.getElementById('app'));
 
-//Initialize all views
+// Initialize all views
 store.start();
 ```
 
@@ -313,7 +317,7 @@ Our application is not yet complete. Let's add a form component so we can add mo
 
 <br>
 ```javascript
-//File: TaskForm.jsx
+// File: TaskForm.jsx
 import React from 'react';
 import TaskActions from './actions';
 
@@ -321,7 +325,7 @@ class TaskForm extends React.Component {
     constructor(props) {
         super(props);
         
-        //Set initial state
+        // Set initial state
         this.state = {
             title: '',
             priority: 1
@@ -354,10 +358,10 @@ class TaskForm extends React.Component {
             priority: this.state.priority
         };
 
-        //Add task
+        // Add task
         TaskActions.addTask(task);
         
-        //Reset state
+        // Reset state
         this.setState({
             title: '',
             priority: 1
@@ -386,7 +390,7 @@ We have a form and a list, it's time to put them together using the `TaskApp` co
 
 <br>
 ```javascript
-//File: TasksApp.jsx
+// File: TasksApp.jsx
 import React from 'react';
 import store from './store';
 import TaskList from './TaskList.jsx';
@@ -414,11 +418,11 @@ export default TasksApp;
 ###Transformations
 
 <br>
-Until now we've seen that the value imported from the higher-order component consist in a single object containing a *view* property with the corresponding JSON representation. In order to tell the component which property must be exported we'll define a `transform` method. This method receives a view instance and returns an object containing the values that are then sent to the component. The next example introduces the `TaskCounter` component, a component that will show the amount of tasks in the list.
+Until now we've seen that the value imported from the higher-order component consist in a single object containing a *view* property with the corresponding JSON representation of a store. In order to tell the component which property must be exported, we need to implement a `transform` method. This method receives a view instance and returns an object containing the values that are then sent to the component. The next example introduces the `TaskCounter` component, a component that will show the amount of tasks in the list.
 
 <br>
 ```javascript
-//File: TaskCounter.jsx
+// File: TaskCounter.jsx
 import React from 'react';
 import Prism from 'backbone.prism';
 
@@ -450,7 +454,7 @@ Time to add the component to our app. Both `TaskList` and `TaskCounter` can shar
 
 <br>
 ```javascript
-//File: TasksApp.jsx
+// File: TasksApp.jsx
 import React from 'react';
 import store from './store';
 import TaskList from './TaskList.jsx';
@@ -481,7 +485,7 @@ export default TasksApp;
 ###Mutators
 
 <br/>
-Mutators are objects that define how a view is generated from a store instance. They allow to change a view configuration values during runtime. A store view supports the following options:
+Mutators are objects that define how a view is generated from a store instance. They allow to change a view configuration during runtime. A store view supports the following options:
 
  * comparator: A model field or a comparator function.
  * filter: A filter function or an object with the desired criteria to apply to the collection.
@@ -506,7 +510,7 @@ Mutators are generated within components through the `createMutator` method. Thi
 
 <br>
 ```javascript
-//File: TaskPaginator.jsx
+// File: TaskPaginator.jsx
 import React from 'react';
 import Prism from 'backbone.prism'
 import Underscore from 'underscore';
@@ -520,7 +524,8 @@ class TaskPaginator extends React.Component {
         };
     }
 
-    componentWillMount() {        
+    componentWillMount() {
+        // Pagination mutator
         this.paginator = this.props.target.createMutator(() => {
             let page = this.state.page;
             let pageSize = this.props.pageSize;
@@ -533,14 +538,15 @@ class TaskPaginator extends React.Component {
     }
     
     componentWillUnmount() {
+        // Destroy mutator when unmounted
         this.paginator.destroy();
     }
     
     handlePageClick(e) {
         e.preventDefault();
 
-        // Update state silently and evaluate mutator
-        this.paginator.update({page: +e.target.innerHTML});
+        // Update state and evaluate mutator
+        this.setState({page: +e.target.innerHTML}, (() => this.paginator.apply()).bind(this));
     }
     
     render() {
@@ -556,7 +562,10 @@ class TaskPaginator extends React.Component {
             );
         }
         
+        // Get amount of pages
         let pages = Math.ceil(this.props.view.length / this.props.pageSize);
+        
+        // Render function
         let renderer = (page => {
             return (
                 <a key={page} href="#" onClick={this.handlePageClick.bind(this)}>{page + 1}</a>
@@ -581,11 +590,13 @@ The `TaskPaginator` component starts by defining its initial state. The only req
 ![Backbone.Prism](http://drive.google.com/uc?export=view&id=0B3PWnBYHw7RQWVVpZmtvTV8xWDA)
 
 <br>
-When rendering the element, we again check if the view is initialized correctly. We calculate the amount of pages and define a render function. We finally use the `times` helper function to render a link for each page. In order to update the component state we invoke the `update` method available in the mutator instance. This method updates the component state without triggering a re-render. This is done on purpose because the paginator needs to trigger an event in order to tell the view that it must update its contents. The paginator is evaluated and then it triggers a *apply* event which updates the view with the new configuration. We can now include this component in the `TaskApp` class.
+When rendering the element, we again check if the view is initialized correctly. We calculate the amount of pages and define a render function. Finally, we use the `times` helper function to render a link for each page.<br>
+Each time the user clicks on a page link the component updates its state and then executes a function that applies the mutator. The associated callback is executed and the newly generated object configuration is then merged. An `apply` event is triggered which updates the *target* view contents. The view then triggers a `sync` event that makes all components listening to re-render.<br>
+We can now include this component in the `TaskApp` class.
 
 <br>
 ```javascript
-//File: TasksApp.jsx
+// File: TasksApp.jsx
 import React from 'react';
 import store from './store';
 import TaskList from './TaskList.jsx';
@@ -621,7 +632,7 @@ export default TasksApp;
 ```
 
 <br>
-As explained before, now our app needs to manage 2 views. The *paginatedView* property is in fact a **subview**; that is, a child view created from a view instance. Notice that we're specifying the *listenTo* option to *'sync'*. Subviews must listen fo this specific else or else they won't update accordingly.
+As explained before, now our app needs to manage 2 views. The *paginatedView* property is in fact a **subview**; that is, a child view created from a view instance. Notice that we're specifying the *listenTo* option to *'sync'*. Subviews must listen fo this specific event or else they won't update accordingly.
 
 <br>
 ### Comparators
@@ -631,7 +642,7 @@ In order to introduce this topic we'll implement the `TaskOrderPicker` component
 
 <br>
 ```javascript
-//File: OrderPicker.jsx
+// File: OrderPicker.jsx
 import React from 'react';
 import Prism from 'backbone.prism'
 
@@ -646,6 +657,7 @@ class TaskOrderPicker extends React.Component {
 	}
 	
 	componentWillMount() {
+	    // Comparator mutator
 		this.comparator = this.props.target.createComparator(() => {
 			let desc = this.state.desc;
 			let field = this.state.field;
@@ -656,6 +668,11 @@ class TaskOrderPicker extends React.Component {
 		}, this);
 	}
 	
+    componentWillUnmount() {
+        // Destroy mutator when unmounted
+        this.comparator.destroy();
+    }
+    
 	handleInvertOrderClick(e) {
 		e.preventDefault();
 		let desc = !this.state.desc;
@@ -688,7 +705,7 @@ Comparators are created through the `createComparator` method. This method expec
 
 <br>
 ```javascript
-//File: TasksApp.jsx
+// File: TasksApp.jsx
 import React from 'react';
 import store from './store';
 import TaskList from './TaskList.jsx';
@@ -738,7 +755,7 @@ This time the component must receive the *mainView* property as its target. When
 
 <br>
 ```javascript
-//File: ChannelComponent.jsx
+// File: ChannelComponent.jsx
 import React from 'react';
 import {Channel} from 'backbone.prism';
 import EmitterComponent from './EmitterComponent.jsx';
@@ -770,7 +787,7 @@ Whenever a new state is applied we communicate it to the listener component. In 
 
 <br>
 ```javascript
-//File: EmitterComponent.jsx
+// File: EmitterComponent.jsx
 import React from 'react';
 
 class EmitterComponent extends React.Component {
@@ -804,7 +821,7 @@ The listener component defines a receiver callback using the *on* method. Notice
 
 <br>
 ```javascript
-//File: ListenerComponent.jsx
+// File: ListenerComponent.jsx
 import React from 'react';
 
 class ListenerComponent extends React.Component {
@@ -836,8 +853,9 @@ export default ListenerComponent;
 <br>
 Before introducing filters we'll make a few changes to our main component. First, we're going to rename *mainView* to *filteredView*. This view is going to be associated with the filter mutator. We're also adding a custom channel instance to communicate events to our pagination component.
 
+<br>
 ```javascript
-//File: TasksApp.jsx
+// File: TasksApp.jsx
 import React from 'react';
 import {Channel} from 'backbone.prism';
 import store from './store';
@@ -880,8 +898,9 @@ export default TasksApp;
 <br>
 In order to our filter to work correctly we need to implement a mechanism to reset the current page. That means changing the state in the `TaskPaginator` component. We'll define a `page:reset` event listener so that the filter component can reset the current page.
 
+<br>
 ```javascript
-//File: TaskPaginator.jsx
+// File: TaskPaginator.jsx
 import React from 'react';
 import Prism from 'backbone.prism'
 import Underscore from 'underscore';
@@ -896,6 +915,7 @@ class TaskPaginator extends React.Component {
     }
 
     componentWillMount() {        
+        // Pagination mutator
         this.paginator = this.props.target.createMutator(() => {
             let page = this.state.page;
             let pageSize = this.props.pageSize;
@@ -905,24 +925,43 @@ class TaskPaginator extends React.Component {
                 size: pageSize
             };
         }, this);
+        
+        // Pagination callback
+        this.paginatorCallback = (() => this.paginator.apply()).bind(this);
 
-        //Reset page on event        
-        this.props.channel.on('reset:page', (() => {
+        // Reset page on event        
+        this.props.channel.on('page:reset', (() => {
+            // Update state silently
 			this.paginator.update({page: 1}, true);
         }).bind(this));
     }
     
     componentWillUnmount() {
+        // Destroy mutator when unmounted
         this.paginator.destroy();
     }
     
     handlePageClick(e) {
         e.preventDefault();
 
-        // Update state silently and evaluate mutator
-        this.paginator.update({page: +e.target.innerHTML});
+        // Update state and evaluate mutator
+        this.setState({page: +e.target.innerHTML}, this.paginatorCallback);
     }
     
+    totalPages(items, pageSize) {
+        return Math.ceil(items / pageSize);
+    }
+    
+    componentWillReceiveProps(nextProps) {
+		let values = nextProps.values();
+		let pages = this.totalPages(values.view.length, this.props.pageSize);
+		
+		// Check if paginator is out of bounds
+		if (this.state.page > pages) {
+			this.setState({ page: pages }, this.paginatorCallback);
+		}
+	}
+
     render() {
         if (!this.props.view.isInitialized()) {
             return (<div></div>);
@@ -936,7 +975,10 @@ class TaskPaginator extends React.Component {
             );
         }
         
-        let pages = Math.ceil(this.props.view.length / this.props.pageSize);
+        // Get amount of pages
+        let pages = this.totalPages(this.props.view.length, this.props.pageSize);
+        
+        // Render function
         let renderer = (page => {
             return (
                 <a key={page} href="#" onClick={this.handlePageClick.bind(this)}>{page + 1}</a>
@@ -953,13 +995,12 @@ class TaskPaginator extends React.Component {
 
 export default Prism.compose(React, TaskPaginator);
 ```
-
 <br>
-The second argument in `update` will make the state transition silent. This is necessary because the `TaskFilter` component will be responsible of updating the related view.
+We've added a few things here. First, we've added a `totalPages` method and a `paginatorCallback` property. The component also starts listening for the `page:reset` event. Each time this event is triggered we need to update the component state, but we need to do it in  a way that doesn't interfere with other updates in the background. The `update` method, available in all mutators, merges a state object in the current component state and then applies the mutator itself. Here we're telling the mutator to not to trigger an `apply` event by providing an additional *true* argument, making it silent. This is necessary because the `TaskFilter` component will be responsible of updating the related view. We've also included a `componentWillReceiveProps`. This method will update the amount of pages that are shown. This is important to avoid weird behaviour when an element is removed from the list.
 
 <br>
 ```javascript
-//File: TaskFilter.jsx
+// File: TaskFilter.jsx
 import React from 'react';
 import Prism from 'backbone.prism';
 import Underscore from 'underscore';
@@ -974,7 +1015,7 @@ class TaskFilter extends React.Component {
 	}
 	
 	componentWillMount() {
-	    //Define view filter
+	    // Define view filter
 		this.filter = this.props.target.createFilter((model) => {
 			let text = this.state.text;
 			let regex = new RegExp(text.replace(/([.*+?^${}()|\[\]\/\\])/g, "\\$1"), 'i');
@@ -984,17 +1025,21 @@ class TaskFilter extends React.Component {
 		
 		this.channel = this.props.channel;
 		
-        //Define a filter callback
+        // Define a filter callback
 		this.filterCallback = Underscore.debounce((() => this.filter.apply()).bind(this), 200);
 	}
+	
+    componentWillUnmount() {
+        this.filter.destroy();
+    }
 	
 	handleFilterChange(e) {
 		let text = e.target.value;
 		
-        //Reset page without triggering an update
-		this.channel.trigger('reset:page');
+        // Reset page without triggering an update
+		this.channel.trigger('page:reset');
 		
-        //Update state and apply filter appropiately
+        // Update state and apply filter appropiately
 		this.setState({text}, this.filterCallback); 
 	}
 	
@@ -1009,12 +1054,12 @@ export default TaskFilter;
 ```
 
 <br>
-Filters, are created through the *createFilter* method. The associated callback must return a function receiving a single model as argument. In this case we defined a filter that checks if the text introduced is included in the model *title* attribute. We're also generating a filter callback using the `debounce` method available in Underscore.js. This method is responsible of applying the filter once the new state is set.<br>
+Filters, are created through the *createFilter* method. The associated callback must return a function receiving a single model as argument. In this case we defined a filter that checks if the text introduced is included in the model *title* attribute. We're also generating a filter callback using the `debounce` method available in *Underscore.js*. This method is responsible of applying the filter once the new state is set.<br>
 Or final app will look like this:
 
 <br>
 ```javascript
-//File: TasksApp.jsx
+// File: TasksApp.jsx
 import React from 'react';
 import {Channel} from 'backbone.prism';
 import store from './store';
@@ -1042,7 +1087,7 @@ class TasksApp extends React.Component {
     render() {
         return (
             <div>
-                <TaskFilter target={this.filteredView} channel={} />
+                <TaskFilter target={this.filteredView} channel={this.channel} />
                 <TaskList view={this.paginatedView} />
                 <TaskPaginator view={this.filteredView} target={this.paginatedView} channel={this.channel} pageSize={3}/>
                 <TaskOrderPicker target={this.filteredView} />
