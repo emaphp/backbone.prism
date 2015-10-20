@@ -578,7 +578,7 @@
         constructor: function(models, options) {
             options = options || {};
             if (options.model) this.model = options.model;
-            if (options.comparator !== void 0) this.comparator = options.comparator;
+            if (options.comparator) this.comparator = options.comparator;
             this._reset();
             this.views = {};
             this.initialize.apply(this, arguments);
