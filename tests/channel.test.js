@@ -2,17 +2,17 @@ describe('Prism.Channel tests', function() {
     it('Should implement events API', function () {
         var channel = new Backbone.Prism.Channel();
 
-        expect(channel.trigger).toBe(Backbone.Events.trigger);
-        expect(channel.listenTo).toBe(Backbone.Events.listenTo);
-        expect(channel.listenToOnce).toBe(Backbone.Events.listenToOnce);
-        expect(channel.stopListening).toBe(Backbone.Events.stopListening);
-        expect(channel.on).toBe(Backbone.Events.on);
-        expect(channel.off).toBe(Backbone.Events.off);
-		expect(channel.request).toBe(Backbone.Radio.Requests.request);
-        expect(channel.reply).toBe(Backbone.Radio.Requests.reply);
+        expect(channel.trigger).to.equal(Backbone.Events.trigger);
+        expect(channel.listenTo).to.equal(Backbone.Events.listenTo);
+        expect(channel.listenToOnce).to.equal(Backbone.Events.listenToOnce);
+        expect(channel.stopListening).to.equal(Backbone.Events.stopListening);
+        expect(channel.on).to.equal(Backbone.Events.on);
+        expect(channel.off).to.equal(Backbone.Events.off);
+		expect(channel.request).to.equal(Backbone.Radio.Requests.request);
+        expect(channel.reply).to.equal(Backbone.Radio.Requests.reply);
     });
 
-    it('Should stop listening', function () {
+    it('Should stop listening when destroyed', function () {
         var channel = new Backbone.Prism.Channel();
 
         var callbacks = {
@@ -25,24 +25,62 @@ describe('Prism.Channel tests', function() {
             }
         };
 
-        spyOn(callbacks, 'replier');
-        spyOn(callbacks, 'listener');
-
-        channel.reply('request', callbacks.replier);
+		var replierSpy = sinon.spy(callbacks, 'replier');
+		var listenerSpy = sinon.spy(callbacks, 'listener');
+		
+		// Setup event handling
+		channel.reply('request', callbacks.replier);
         channel.on('event', callbacks.listener);
-
+        
+        // Trigger events
         channel.request('request');
         channel.trigger('event');
-
+        
         channel.destroy();
-
+        
         channel.request('request');
         channel.trigger('event');
+        
+        expect(replierSpy.called).to.be.true;
+        expect(listenerSpy.called).to.be.true;
+        
+        expect(replierSpy.calledOnce).to.be.true;
+        expect(listenerSpy.calledOnce).to.be.true;
+    });
+    
+    it('Should stop listening after reset', function () {
+        var channel = new Backbone.Prism.Channel();
 
-        expect(callbacks.replier).toHaveBeenCalled();
-        expect(callbacks.replier.calls.count()).toBe(1);
+        var callbacks = {
+            replier: function () {
+                return;
+            },
 
-        expect(callbacks.listener).toHaveBeenCalled();
-        expect(callbacks.listener.calls.count()).toBe(1);
+            listener: function () {
+                return;
+            }
+        };
+
+		var replierSpy = sinon.spy(callbacks, 'replier');
+		var listenerSpy = sinon.spy(callbacks, 'listener');
+		
+		// Setup event handling
+		channel.reply('request', callbacks.replier);
+        channel.on('event', callbacks.listener);
+        
+        // Trigger events
+        channel.request('request');
+        channel.trigger('event');
+        
+        channel.reset();
+        
+        channel.request('request');
+        channel.trigger('event');
+        
+        expect(replierSpy.called).to.be.true;
+        expect(listenerSpy.called).to.be.true;
+        
+        expect(replierSpy.calledOnce).to.be.true;
+        expect(listenerSpy.calledOnce).to.be.true;
     });
 });

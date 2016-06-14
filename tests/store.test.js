@@ -9,19 +9,19 @@ describe('Prism.Store tests', function() {
             name: 'custom'
         });
 
-        expect(view.name).toBe('custom');
-        expect(_.toArray(store.views).length).toBe(1);
-        expect(store.views.custom).toBeDefined();
+        expect(view.name).to.equal('custom');
+        expect(_.toArray(store.views).length).to.equal(1);
+        expect(store.views.custom).to.exist;
 
         view.destroy();
-        expect(_.toArray(store.views).length).toBe(0);
-        expect(store.views.default).toBeUndefined();
+        expect(_.toArray(store.views).length).to.equal(0);
+        expect(store.views.default).to.be.undefined;
 
         var view = store.createView();
         var name = view.name;
-        expect(store.views[name]).toBeDefined();
+        expect(store.views[name]).to.exist;
         var otherView = store.getView(name);
-        expect(otherView).toBe(view);
+        expect(otherView).to.equal(view);
         view.destroy();
     });
 
@@ -31,29 +31,29 @@ describe('Prism.Store tests', function() {
         });
 
         var store = new Store();
-        expect(store.name).toBe('store');
+        expect(store.name).to.equal('store');
 
         var defaultView = store.getDefaultView();
-        expect(defaultView.name).toBe('default');
-        expect(_.toArray(store.views).length).toBe(1);
-        expect(store.views.default).toBeDefined();
+        expect(defaultView.name).to.equal('default');
+        expect(_.toArray(store.views).length).to.equal(1);
+        expect(store.views.default).to.exist;
 
         var view = store.getDefaultView();
-        expect(view).toBe(defaultView);
+        expect(view).to.equal(defaultView);
 
         view.destroy();
-        expect(_.toArray(store.views).length).toBe(0);
-        expect(store.views.default).toBeUndefined();
+        expect(_.toArray(store.views).length).to.equal(0);
+        expect(store.views.default).to.be.undefined;
     });
 
-    it('Should trigger start', function () {
+    it('Should trigger publish', function () {
         var listener = {
             callback: function () {
                 return;
             }
         };
 
-        spyOn(listener, 'callback');
+        var spy = sinon.spy(listener, 'callback');
 
         var Store = Backbone.Prism.Store.extend({
             name: 'store'
@@ -61,13 +61,13 @@ describe('Prism.Store tests', function() {
 
         var store = new Store();
         var view = store.createView();
-        expect(store._isInitialized).toBe(false);
-        expect(view._isInitialized).toBe(false);
+        expect(store._isInitialized).to.be.false;
+        expect(view._isInitialized).to.be.false;
 
-        store.on('start', listener.callback);
-        store.start();
-        expect(listener.callback).toHaveBeenCalled();
-        expect(store._isInitialized).toBe(true);
-        expect(view._isInitialized).toBe(true);
+        store.on('publish', listener.callback);
+        store.publish();
+        expect(spy.called).to.be.true;
+        expect(store._isInitialized).to.be.true;
+        expect(view._isInitialized).to.be.true;
     });
 });

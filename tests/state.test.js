@@ -9,19 +9,19 @@ describe('Prism.State tests', function() {
             name: 'custom'
         });
 
-        expect(view.name).toBe('custom');
-        expect(_.toArray(state.views).length).toBe(1);
-        expect(state.views.custom).toBeDefined();
+        expect(view.name).to.equal('custom');
+        expect(_.toArray(state.views).length).to.equal(1);
+        expect(state.views.custom).to.exist;
 
         view.destroy();
-        expect(_.toArray(state.views).length).toBe(0);
-        expect(state.views.default).toBeUndefined();
+        expect(_.toArray(state.views).length).to.equal(0);
+        expect(state.views.default).to.be.undefined;
 
         var view = state.createView();
         var name = view.name;
-        expect(state.views[name]).toBeDefined();
+        expect(state.views[name]).to.exist;
         var otherView = state.getView(name);
-        expect(otherView).toBe(view);
+        expect(otherView).to.equal(view);
         view.destroy();
     });
 
@@ -31,29 +31,29 @@ describe('Prism.State tests', function() {
         });
 
         var state = new State();
-        expect(state.name).toBe('state');
+        expect(state.name).to.equal('state');
 
         var defaultView = state.getDefaultView();
-        expect(defaultView.name).toBe('default');
-        expect(_.toArray(state.views).length).toBe(1);
-        expect(state.views.default).toBeDefined();
+        expect(defaultView.name).to.equal('default');
+        expect(_.toArray(state.views).length).to.equal(1);
+        expect(state.views.default).to.exist;
 
         var view = state.getDefaultView();
-        expect(view).toBe(defaultView);
+        expect(view).to.equal(defaultView);
 
         view.destroy();
-        expect(_.toArray(state.views).length).toBe(0);
-        expect(state.views.default).toBeUndefined();
+        expect(_.toArray(state.views).length).to.equal(0);
+        expect(state.views.default).to.be.undefined;
     });
 
-    it('Should trigger start', function () {
+    it('Should trigger publish', function () {
         var listener = {
             callback: function () {
                 return;
             }
         };
 
-        spyOn(listener, 'callback');
+        var spy = sinon.spy(listener, 'callback');
 
         var State = Backbone.Prism.State.extend({
             name: 'state'
@@ -61,13 +61,13 @@ describe('Prism.State tests', function() {
 
         var state = new State();
         var view = state.createView();
-        expect(state._isInitialized).toBe(false);
-        expect(view._isInitialized).toBe(false);
+        expect(state._isInitialized).to.be.false;
+        expect(view._isInitialized).to.be.false;
 
-        state.on('start', listener.callback);
-        state.start();
-        expect(listener.callback).toHaveBeenCalled();
-        expect(state._isInitialized).toBe(true);
-        expect(view._isInitialized).toBe(true);
+        state.on('publish', listener.callback);
+        state.publish();
+        expect(spy.called).to.be.true;
+        expect(state._isInitialized).to.be.true;
+        expect(view._isInitialized).to.be.true;
     });
 });

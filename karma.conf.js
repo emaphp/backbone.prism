@@ -10,7 +10,7 @@ module.exports = function(config) {
 
     // frameworks to use
     // available frameworks: https://npmjs.org/browse/keyword/karma-adapter
-    frameworks: ['jasmine'],
+    frameworks: ['mocha', 'chai', 'sinon'],
 
 
     // list of files / patterns to load in the browser
@@ -18,10 +18,18 @@ module.exports = function(config) {
         'node_modules/underscore/underscore.js',
         'node_modules/backbone/backbone.js',
         'node_modules/backbone.radio/build/backbone.radio.js',
-        'tests/Flux.js',
+        'node_modules/react/dist/react.js',
+        'node_modules/flux/dist/Flux.js',
         'dist/backbone.prism.js',
-        'tests/*.js'
+        'tests/*.test.js',
     ],
+    
+    'plugins' : [
+		'karma-mocha',
+		'karma-chai',
+		'karma-sinon',
+		'karma-chrome-launcher'
+	],
 
 
     // list of files to exclude

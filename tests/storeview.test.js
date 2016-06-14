@@ -1,5 +1,5 @@
 describe('Prism.StateView tests', function() {
-    it('Should initialize', function () {
+    it('Should initialize its subviews', function () {
         var Store = Backbone.Prism.Store.extend({
             name: 'store'
         });
@@ -8,18 +8,18 @@ describe('Prism.StateView tests', function() {
         var view = store.createView({
             name: 'test'
         });
-        expect(view.parent).toBe(store);
-        expect(view.name).toBe('test');
-        expect(view._isInitialized).toBe(false);
+        expect(view.parent).to.equal(store);
+        expect(view.name).to.equal('test');
+        expect(view._isInitialized).to.be.false;
 
-        store.start();
-        expect(view._isInitialized).toBe(true);
-        expect(view.models).toBeDefined();
-        expect(view.length).toBe(2);
-        expect(store.at(0).get('name')).toBe('Ralph');
-        expect(store.at(0).get('specie')).toBe('dog');
-        expect(store.at(1).get('name')).toBe('Lucy');
-        expect(store.at(1).get('specie')).toBe('cat');
+        store.publish();
+        expect(view._isInitialized).to.be.true;
+        expect(view.models).to.exist;
+        expect(view.length).to.equal(2);
+        expect(store.at(0).get('name')).to.equal('Ralph');
+        expect(store.at(0).get('specie')).to.equal('dog');
+        expect(store.at(1).get('name')).to.equal('Lucy');
+        expect(store.at(1).get('specie')).to.equal('cat');
     });
 
     it('Should trigger sync event', function () {
@@ -38,10 +38,10 @@ describe('Prism.StateView tests', function() {
             }
         };
 
-        spyOn(listener, 'callback');
+        var spy = sinon.spy(listener, 'callback');
         view.on('sync', listener.callback);
-        store.start();
-        expect(listener.callback).toHaveBeenCalled();
+        store.publish();
+        expect(spy.called).to.be.true;
     });
 
     it('Should export cid', function () {
@@ -54,20 +54,20 @@ describe('Prism.StateView tests', function() {
             name: 'test'
         });
 
-        store.start();
+        store.publish();
         var values = view.toJSON();
-        expect(values.length).toBe(2);
-        expect(values[0].cid).toBeDefined();
-        expect(values[0].cid).toMatch(/^c/);
-        expect(values[0].name).toBe('Ralph');
-        expect(values[0].specie).toBe('dog');
-        expect(values[1].cid).toBeDefined();
-        expect(values[1].cid).toMatch(/^c/);
-        expect(values[1].name).toBe('Lucy');
-        expect(values[1].specie).toBe('cat');
+        expect(values.length).to.equal(2);
+        expect(values[0].cid).to.exist;
+        expect(values[0].cid).to.match(/^c/);
+        expect(values[0].name).to.equal('Ralph');
+        expect(values[0].specie).to.equal('dog');
+        expect(values[1].cid).to.exist;
+        expect(values[1].cid).to.match(/^c/);
+        expect(values[1].name).to.equal('Lucy');
+        expect(values[1].specie).to.equal('cat');
     });
 
-    it('Should mutate options', function () {
+    it('Should modify options', function () {
         var Store = Backbone.Prism.Store.extend({
             name: 'store'
         });
@@ -87,22 +87,22 @@ describe('Prism.StateView tests', function() {
             }
         };
 
-        spyOn(listener, 'callback');
-        var mutator = view.createMutator(function () {
+        var spy = sinon.spy(listener, 'callback');
+        var config = view.createConfig(null, function () {
             return options;
         });
-        mutator.on('apply', listener.callback);
+        config.on('set', listener.callback);
 
-        store.start();
-        expect(listener.callback).not.toHaveBeenCalled(); // first update is silent
-        expect(view.options.size).toBe(5);
+        store.publish();
+        expect(spy.called).to.be.false; // first update is silent
+        expect(view.options.size).to.equal(5);
 
         options = {size: 10, comparator: 'specie'};
-        mutator.apply();
-        expect(listener.callback).toHaveBeenCalled();
-        expect(view.options.size).toBe(10);
-        expect(view.options.comparator).toBe('specie');
-        expect(view.models[0].get('name')).toBe('Lucy');
+        config.apply();
+        expect(spy.called).to.be.true;
+        expect(view.options.size).to.equal(10);
+        expect(view.options.comparator).to.equal('specie');
+        expect(view.models[0].get('name')).to.equal('Lucy');
     });
 
     it('Should apply comparator', function () {
@@ -126,17 +126,17 @@ describe('Prism.StateView tests', function() {
 
         var defaultView = store.getDefaultView();
 
-        var comparator = defaultView.createComparator(function () {
+        var comparator = defaultView.createComparator(null, function () {
             return function (m1, m2) {
-                return m2.get('name') < m1.get('name');
+                return m2.get('name') < m1.get('name') ? 1 : (m2.get('name') > m1.get('name') ? -1 : 0);
             };
         });
 
-        store.start();
-        expect(customView.models[0].get('name')).toBe('Go');
-        expect(customView.models[6].get('name')).toBe('Gex');
-        expect(defaultView.models[0].get('name')).toBe('Ed');
-        expect(defaultView.models[6].get('name')).toBe('Tom');
+        store.publish();
+        expect(customView.models[0].get('name')).to.equal('Go');
+        expect(customView.models[6].get('name')).to.equal('Gex');
+        expect(defaultView.models[0].get('name')).to.equal('Ed');
+        expect(defaultView.models[6].get('name')).to.equal('Tom');
     });
 
     it('Should apply filters', function () {
@@ -166,23 +166,23 @@ describe('Prism.StateView tests', function() {
 
         var defaultView = store.getDefaultView();
 
-        var nameFilter = defaultView.createFilter(function () {
+        var nameFilter = defaultView.createFilter(null, function () {
             return function (model) {
                 return model.get('specie').match(/o/);
             };
         });
 
-        var ageFilter = defaultView.createFilter(function () {
+        var ageFilter = defaultView.createFilter(null, function () {
             return function (model) {
                 return model.get('age') >=5;
             };
         });
 
-        store.start();
+        store.publish();
 
-        expect(youngestView.models.length).toBe(5);
-        expect(exactAgeView.models.length).toBe(2);
-        expect(defaultView.models.length).toBe(2);
+        expect(youngestView.models.length).to.equal(5);
+        expect(exactAgeView.models.length).to.equal(2);
+        expect(defaultView.models.length).to.equal(2);
     });
 
     it('Should ignore event', function () {
@@ -200,20 +200,27 @@ describe('Prism.StateView tests', function() {
             }
         };
 
-        spyOn(listener, 'callback');
+        var spy = sinon.spy(listener, 'callback');
         view.on('sync', listener.callback);
-        store.start();
-        expect(listener.callback).toHaveBeenCalled();
-        expect(listener.callback.calls.count()).toBe(1);
+        
+        store.publish();
+        expect(spy.called).to.be.true;
+        expect(spy.calledOnce).to.be.true;
+        expect(view.models.length).to.equal(2);
+        
         store.add({name: 'Gex', specie: 'lizard'});
-        expect(listener.callback.calls.count()).toBe(2);
+        expect(spy.calledTwice).to.be.true;
+        expect(view.models.length).to.equal(3);
+        
         view.sleep();
+        
         store.add({name: 'Ed', specie: 'horse'});
-        expect(listener.callback.calls.count()).toBe(2);
-        expect(view.models.length).toBe(3);
-        view.wakeup();
-        expect(listener.callback.calls.count()).toBe(3);
-        expect(view.models.length).toBe(4);
+        expect(spy.calledThrice).to.be.false,
+        expect(view.models.length).to.equal(3);
+        
+        view.wakeup(true);
+        expect(spy.calledThrice).to.be.true;
+        expect(view.models.length).to.equal(4);
     });
     
     it('Should return subview instance', function () {
@@ -229,8 +236,8 @@ describe('Prism.StateView tests', function() {
 			name: 'subview'
 		});
 		
-		expect(subview.parent).toBe(view);
-		expect(view.views['subview']).toBe(subview);
+		expect(subview.parent).to.equal(view);
+		expect(view.views['subview']).to.equal(subview);
 	});
 	
 	it('Should update subview', function () {
@@ -247,17 +254,17 @@ describe('Prism.StateView tests', function() {
 			listenTo: 'sync'
 		});
 		
-		store.start();
-		expect(view.length).toBe(2);
-		expect(subview.length).toBe(2);
+		store.publish();
+		expect(view.length).to.equal(2);
+		expect(subview.length).to.equal(2);
 		
 		store.add({name: 'Truman', specie: 'parrot'});
-		expect(store.length).toBe(3);
-		expect(view.length).toBe(3);
-		expect(subview.length).toBe(3);
+		expect(store.length).to.equal(3);
+		expect(view.length).to.equal(3);
+		expect(subview.length).to.equal(3);
 	});
 	
-	it('Should apply view mutators', function () {
+	it('Should apply view configs', function () {
 		var Store = Backbone.Prism.Store.extend({
             name: 'store'
         });
@@ -280,7 +287,7 @@ describe('Prism.StateView tests', function() {
 		});
 		
 		var obj = {
-			mutatorCallback: function () {
+			configCallback: function () {
 				return {
 					offset: 1,
 					size: 4
@@ -288,25 +295,25 @@ describe('Prism.StateView tests', function() {
 			}
 		};
 		
-		var viewMutator = view.createMutator(obj.mutatorCallback, null);
+		var viewConfig = view.createConfig(null, obj.configCallback);
 		
 		//
-		var subViewMutator = subview.createMutator(function () {
+		var subViewConfig = subview.createConfig(null, function () {
 			return {
 				size: 3
 			};
-		}, null);
+		});
 		
-		var subViewComparator = subview.createComparator(function () {
+		var subViewComparator = subview.createComparator(null, function () {
 			return function (model1, model2) {
-				return model1.get('age') < model2.get('age');
+				return model1.get('age') < model2.get('age') ? 1 : (model1.get('age') > model2.get('age') ? -1 : 0);
 			};
-		}, null);
+		});
 		
-		expect(view.mutators[viewMutator.cid]).toBe(viewMutator);
-		store.start();
-		expect(view.length).toBe(4);
-		expect(subview.length).toBe(3);
-		expect(subview.models[0].get('name')).toBe('Gex');
+		expect(view.configs[viewConfig.cid]).to.equal(viewConfig);
+		store.publish();
+		expect(view.length).to.equal(4);
+		expect(subview.length).to.equal(3);
+		expect(subview.models[0].get('name')).to.equal('Gex');
 	});
 });

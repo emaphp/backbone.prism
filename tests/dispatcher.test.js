@@ -1,9 +1,9 @@
 describe('Prism.Dispatcher tests', function() {
-    it('Should add methods', function () {
+    it('Should have additional handling methods', function () {
         var dispatcher = new Backbone.Prism.Dispatcher();
         var store = new Backbone.Prism.Store();
-        expect(dispatcher.handleViewAction).toBeDefined();
-        expect(dispatcher.handleServerAction).toBeDefined();
+        expect(dispatcher.handleViewAction).to.exist;
+        expect(dispatcher.handleServerAction).to.exist;
     });
 
     it('Should call store method', function () {
@@ -14,7 +14,7 @@ describe('Prism.Dispatcher tests', function() {
             }
         };
 
-        spyOn(methods, 'test-callback');
+        var methodSpy = sinon.spy(methods, 'test-callback');
         dispatcher.register(function(payload) {
 			var action = payload.action;
 			
@@ -30,6 +30,6 @@ describe('Prism.Dispatcher tests', function() {
         dispatcher.handleViewAction({
             type: 'test-callback'
         });
-        expect(methods['test-callback']).toHaveBeenCalled();
+        expect(methodSpy.called).to.be.true;
     });
 });

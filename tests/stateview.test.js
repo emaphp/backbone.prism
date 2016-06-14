@@ -8,15 +8,15 @@ describe('Prism.StateView tests', function() {
         var view = state.createView({
             name: 'test'
         });
-        expect(view.parent).toBe(state);
-        expect(view.name).toBe('test');
-        expect(view._isInitialized).toBe(false);
+        expect(view.parent).to.equal(state);
+        expect(view.name).to.equal('test');
+        expect(view._isInitialized).to.be.false;
 
-        state.start();
-        expect(view._isInitialized).toBe(true);
-        expect(view.attributes).toBeDefined();
-        expect(view.attributes.name).toBe('emaphp');
-        expect(view.attributes.role).toBe('developer');
+        state.publish();
+        expect(view._isInitialized).to.be.true;
+        expect(view.attributes).to.exist;
+        expect(view.attributes.name).to.equal('emaphp');
+        expect(view.attributes.role).to.equal('developer');
     });
 
     it('Should trigger sync event', function () {
@@ -35,10 +35,10 @@ describe('Prism.StateView tests', function() {
             }
         };
 
-        spyOn(listener, 'callback');
+        var spy = sinon.spy(listener, 'callback');
         view.on('sync', listener.callback);
-        state.start();
-        expect(listener.callback).toHaveBeenCalled();
+        state.publish();
+        expect(spy.called).to.be.true;
     });
 
     it('Should export cid', function () {
@@ -51,15 +51,15 @@ describe('Prism.StateView tests', function() {
             name: 'test'
         });
 
-        state.start();
+        state.publish();
         var values = view.toJSON();
-        expect(values.name).toBe('emaphp');
-        expect(values.role).toBe('developer');
-        expect(values.cid).toBeDefined();
-        expect(values.cid).toMatch(/^c/);
+        expect(values.name).to.equal('emaphp');
+        expect(values.role).to.equal('developer');
+        expect(values.cid).to.exist;
+        expect(values.cid).to.match(/^c/);
     });
 
-    it('Should mutate options', function () {
+    it('Should modify options', function () {
         var State = Backbone.Prism.State.extend({
             name: 'state'
         });
@@ -78,21 +78,21 @@ describe('Prism.StateView tests', function() {
             }
         };
 
-        spyOn(listener, 'callback');
-        var mutator = view.createMutator(function () {
+        var spy = sinon.spy(listener, 'callback');
+        var config = view.createConfig(null, function () {
             return {
                 display: display
             };
         });
-        mutator.on('apply', listener.callback);
+        config.on('set', listener.callback);
 
-        state.start();
-        expect(listener.callback).not.toHaveBeenCalled(); // first update is silent
-        expect(view.options.display).toBe('align-left');
+        state.publish();
+        expect(spy.called).to.be.false; // first update is silent
+        expect(view.options.display).to.equal('align-left');
         display = 'align-right';
-        mutator.apply();
-        expect(listener.callback).toHaveBeenCalled();
-        expect(view.options.display).toBe('align-right');
+        config.apply();
+        expect(spy.called).to.be.true;
+        expect(view.options.display).to.equal('align-right');
     });
     
     it('Should update subview', function () {
@@ -109,10 +109,10 @@ describe('Prism.StateView tests', function() {
 			listenTo: 'sync'
 		});
 		
-		state.start();
-		expect(view.attributes.name).toBe('emaphp');
-		expect(view.attributes.cid).toBe(state.cid);
-		expect(subview.attributes.name).toBe('emaphp');
-		expect(subview.attributes.cid).toBe(view.attributes.cid);
+		state.publish();
+		expect(view.attributes.name).to.equal('emaphp');
+		expect(view.attributes.cid).to.equal(state.cid);
+		expect(subview.attributes.name).to.equal('emaphp');
+		expect(subview.attributes.cid).to.equal(view.attributes.cid);
 	});
 });

@@ -6,7 +6,7 @@ describe('Prism.Object tests', function() {
 
         obj.anotherOption = 'hello';
 
-        expect(obj.getOption('test')).toBe(true);
-        expect(obj.getOption('anotherOption')).toBe('hello');
+        expect(obj.getOption('test')).to.be.true;
+        expect(obj.getOption('anotherOption')).to.equal('hello');
     });
 });
