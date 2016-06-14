@@ -1,32 +1,35 @@
 //
-// Backbone.Prism - v1.2.0
+// Backbone.Prism - v1.3.0
 // ------------------------
 // Flux-like architecture for Backbone.js
-// Copyright 2015 Emmanuel Antico
+// Copyright 2015 - 2016 Emmanuel Antico
 // This library is distributed under the terms of the MIT license.
 //
-(function(global, factory) {
+(function (global, factory) {
+    'use strict';
     if (typeof define === 'function' && define.amd) {
-        define(['backbone', 'underscore', 'flux', 'backbone.radio'], function(Backbone, _, Flux) {
-            return factory(global, Backbone, _, Flux);
+        define(['backbone', 'underscore', 'react', 'flux', 'backbone.radio'], function (Backbone, _, React, Flux) {
+            return factory(global, Backbone, _, React, Flux);
         });
     } else if (typeof exports !== 'undefined') {
         var Radio = require('backbone.radio');
-        module.exports = factory(global, require('backbone'), require('underscore'), require('flux'));
+        module.exports = factory(global, require('backbone'), require('underscore'), require('react'), require('flux'));
     } else {
-        factory(global, global.Backbone, global._, global.Flux);
+        factory(global, global.Backbone, global._, global.React, global.Flux);
     }
-}(this, function(global, Backbone, _, Flux) {
+}(this, function (global, Backbone, _, React, Flux) {
+    'use strict';
     var Prism = Backbone.Prism = Backbone.Prism || {};
-    Prism.VERSION = '1.2.0';
+    Prism.VERSION = '1.3.0';
     Prism.extend = Backbone.Model.extend;
 
     //
     // Helpers
     // -------
+    // Utility helpers for general use classes (based on Marionette.js helpers).
 
     // Merge a list of options by keys
-    var mergeOptions = function(options, keys) {
+    var mergeOptions = function (options, keys) {
         if (!options) {
             return;
         }
@@ -35,7 +38,7 @@
     };
 
     // Obtains an option by name
-    var getOption = function(target, optionName) {
+    var getOption = function (target, optionName) {
         if (!target || !optionName) {
             return;
         }
@@ -48,16 +51,74 @@
     };
 
     // Proxy method for obtaining an option value
-    var proxyGetOption = function(optionName) {
+    var proxyGetOption = function (optionName) {
         return getOption(this, optionName);
     };
 
     // Removes all event related data from an instance
-    var destroy = function() {
-        this.trigger('destroy');
+    var destroy = function (options) {
+        options = options || {};
+        this.trigger('before:destroy', options);
+        this.trigger('destroy', options);
         this.stopListening();
-        this.off();
         return this;
+    };
+
+    //
+    // Underscore Helpers
+    // ------------------
+    // Allows the injection of Underscore.js methods in classes.
+
+    var modelMatcher = function (attrs) {
+        var matcher = _.matches(attrs);
+        return function (model) {
+            return matcher(model.attributes);
+        };
+    };
+
+    var cb = function (iteratee, instance) {
+        if (_.isFunction(iteratee)) {
+            return iteratee;
+        }
+        if (_.isObject(iteratee) && !instance._isModel(iteratee)) {
+            return modelMatcher(iteratee);
+        }
+        if (_.isString(iteratee)) {
+            return function (model) {
+                return model.get(iteratee);
+            };
+        }
+        return iteratee;
+    };
+
+    var addMethod = function (length, method, attribute) {
+        switch (length) {
+            case 1: return function () {
+                return _[method](this[attribute]);
+            };
+            case 2: return function (value) {
+                return _[method](this[attribute], value);
+            };
+            case 3: return function (iteratee, context) {
+                return _[method](this[attribute], cb(iteratee, this), context);
+            };
+            case 4: return function (iteratee, defaultVal, context) {
+                return _[method](this[attribute], cb(iteratee, this), defaultVal, context);
+            };
+            default: return function () {
+                var args = slice.call(arguments);
+                args.unshift(this[attribute]);
+                return _[method].apply(_, args);
+            };
+        }
+    };
+
+    var addUnderscoreMethods = function (Class, methods, attribute) {
+        _.each(methods, function (length, method) {
+            if (_[method]) {
+                Class.prototype[method] = addMethod(length, method, attribute);
+            }
+        });
     };
 
     //
@@ -65,33 +126,48 @@
     // -----------------------------------------
     // The Prism.Object is a simple extendable class including Backbone.Events as a mixin.
 
-    Prism.Object = function(options) {
+    Prism.Object = function (options) {
         this.options = _.extend({}, _.result(this, 'options'), options);
         this.initialize.apply(this, arguments);
     };
 
-    Prism.Object.extend = Prism.extend;
-
     _.extend(Prism.Object.prototype, Backbone.Events, {
-        initialize: function() {},
+        initialize: function () {},
         mergeOptions: mergeOptions,
         getOption: proxyGetOption,
         destroy: destroy
     });
+
+    Prism.Object.extend = Prism.extend;
 
     //
     // Prism.Channel
     // -------------
     // The Prism.Channel class implements a full messaging API (courtesy of Backbone.Radio).
 
-    Prism.Channel = Prism.Object.extend(_.extend({
-        destroy: function() {
+    Prism.ChannelMixin = _.extend({
+        reset: function () {
+            this.off();
+            this.stopListening();
+            this.stopReplying();
+            return this;
+        },
+
+        destroy: function (options) {
+            options = options || {};
+            this.trigger('before:destroy', options);
+            this.trigger('destroy', options);
             this.off();
             this.stopListening();
             this.stopReplying();
             return this;
         }
-    }, Backbone.Radio.Requests));
+    }, Backbone.Radio.Requests);
+
+    Prism.Channel = Prism.Object.extend(Prism.ChannelMixin);
+
+    // Also wrap Backbone.Radio
+    Prism.Radio = Backbone.Radio;
 
     //
     // Prism.Events
@@ -105,21 +181,23 @@
     // ----------------
     // The Prism.Dispatcher class extends Flux.Dispatcher adding the handleViewAction and handleServerAction methods.
 
-    Prism.Dispatcher = function() {
+    Prism.Dispatcher = function () {
         Flux.Dispatcher.prototype.constructor.apply(this, arguments);
     };
 
     Prism.Dispatcher.prototype = new Flux.Dispatcher();
 
     _.extend(Prism.Dispatcher.prototype, {
-        handleViewAction: function(action) {
+        // Handles actions coming from the view
+        handleViewAction: function (action) {
             return this.dispatch({
                 source: 'view',
                 action: action
             });
         },
 
-        handleServerAction: function(action) {
+        // Handles actions coming from the server
+        handleServerAction: function (action) {
             return this.dispatch({
                 source: 'server',
                 action: action
@@ -128,52 +206,65 @@
     });
 
     //
-    // Prism.ViewMutator
-    // -----------------
-    // A Prism.ViewMutator instance applies changes to a view configuration object.
+    // Prism.ViewConfig
+    // ----------------
+    // A Prism.ViewConfig instance applies changes to a view configuration object.
 
-    var ViewMutator = Prism.Object.extend({
-        // Initializes a ViewMutator instance
+    var ViewConfig = Prism.Object.extend({
+        // Initializes a ViewConfig instance
         // Expects a parent view, the corresponding component and an additional callback
-        initialize: function(parent, context, callback) {
-            this.parent = parent;
-            this.context = context;
+        initialize: function (view, component, callback) {
+            this.view = view;
+            this.component = component; // The component acts as the context of the given callback
             this.callback = callback;
 
             // On start, apply changes to view but don't trigger an event
-            parent.on('wakeup', (function() {
-                this.apply(true);
-            }).bind(this));
+            // This provides a 'silent' initialization which makes the view
+            // get the desired behavior when the store/state is published
+            this.listenTo(view, 'wakeup', this.eval(true));
         },
 
-        // Applies modifications to a view instance
-        apply: function(silent) {
-            _.extend(this.parent.options, this.callback.call(this.context));
-            if (silent === true) return;
-            this.trigger('apply', silent);
+        // Applies modifications to a view configuration instance
+        apply: function (silent) {
+            _.extend(this.view.options, this.callback.call(this.component));
+            if (!silent) {
+                this.trigger('set', this);
+            }
         },
 
-        //Updates a component state and applies the mutator
-        update: function(state, silent) {
-            _.extend(this.context.state, state);
+        // Returns a binded function that applies the current config
+        eval: function (silent) {
+            return (function () {
+                this.apply(silent);
+            }).bind(this);
+        },
+
+        // Updates a component state without triggering a re-render
+        // and then applies changes to the view configuration object
+        // Used to avoid re-rendering on components that alter the view
+        // that is being listened
+        updateComponentState: function (state, silent) {
+            _.extend(this.component.state, state);
             this.apply(silent);
         }
     });
 
-    Prism.ViewMutator = ViewMutator;
+    Prism.ViewConfig = ViewConfig;
 
     //
     // Prism.ViewComparator
     // --------------------
     // The Prism.ViewComparator class determines the order to apply to a list of models.
 
-    var ViewComparator = ViewMutator.extend({
-        apply: function(silent) {
-            _.extend(this.parent.options, {
-                comparator: this.callback.call(this.context)
+    var ViewComparator = ViewConfig.extend({
+        // Sets the comparation callback for a view
+        apply: function (silent) {
+            _.extend(this.view.options, {
+                comparator: this.callback.call(this.component)
             });
-            if (silent === true) return;
-            this.trigger('apply');
+            if (!silent) {
+                this.trigger('set', this);
+            }
         },
     });
 
@@ -184,31 +275,77 @@
     // ----------------
     // The Prism.ViewFilter class determines which models are removed from a view.
 
-    var ViewFilter = ViewMutator.extend({
-        apply: function(silent) {
-            this.parent.options.filters = this.parent.options.filters || {};
-            this.parent.options.filters[this.cid] = this.callback.call(this.context);
-            if (silent === true) return;
-            this.trigger('apply');
+    var ViewFilter = ViewConfig.extend({
+        apply: function (silent) {
+            this.view.options.filters = this.view.options.filters || {};
+            this.view.options.filters[this.cid] = this.callback.call(this.component);
+            if (!silent) {
+                this.trigger('set', this);
+            }
         }
     });
 
     Prism.ViewFilter = ViewFilter;
 
     //
-    // BaseMixin
-    // ---------
-    // BaseMixin implements common logic used by Prism.State and Prism.Store classes.
+    // Prism.ViewPaginator
+    // -------------------
+    // The Prism.ViewPaginator class features a simple view paginator.
 
-    var BaseMixin = {
-        _isInitialized: false,
+    var ViewPaginator = ViewConfig.extend({
+        // Initializes both 'page' and 'pageSize' properties
+        initialize: function (view, component, pageSize, defaultPage) {
+            ViewConfig.prototype.initialize.call(this, view, component);
+            this.pageSize = pageSize || 10;
+            this.page = defaultPage || 1;
+        },
 
-        // Initializes children views
-        start: function() {
-            this.trigger('start');
-            this._isInitialized = true;
+        // Returns current page
+        getPage: function () {
+            return this.page;
+        },
+
+        // Sets and returns the current page
+        setPage: function (page) {
+            this.page = page;
+            return page;
+        },
+
+        // Sets the current page and updates the view configuration object
+        setCurrentPage: function (page, force) {
+            this.page = page;
+            this.apply(!force);
+        },
+
+        // Returns current page size
+        getPageSize: function () {
+            return this.pageSize;
+        },
+
+        // Sets and returns current page size
+        setPageSize: function (pageSize) {
+            this.pageSize = pageSize;
+            return pageSize;
+        },
+
+        // Returns the amount of pages required for a given total
+        getTotalPages: function (total) {
+            return Math.ceil(total / this.pageSize);
+        },
+
+        // Updates 'size' and 'offset' configuration options in the view
+        apply: function (silent) {
+            _.extend(this.view.options, {
+                size: this.pageSize,
+                offset: this.pageSize * (this.page - 1)
+            });
+            if (!silent) {
+                this.trigger('set', this);
+            }
         }
-    };
+    });
+
+    Prism.ViewPaginator = ViewPaginator;
 
     //
     // ViewBaseMixin
@@ -216,55 +353,57 @@
     // ViewBaseMixin implements common logic used by Prism.StateView and Prism.StoreView classes.
 
     var ViewBaseMixin = _.extend({
-        mutators: {},
+        configs: {},
 
         // Determines is the view is initialized
-        isInitialized: function() {
+        isInitialized: function () {
             return !!this._isInitialized;
         },
 
-        // Returns a new ViewMutator instance
-        createMutator: function(callback, context) {
-            var mutator = new ViewMutator(this, context, callback);
-            mutator.cid = _.uniqueId('mutator');
-            this._storeMutator(mutator);
-            return mutator;
-        },
-
-        // Stores a ViewMutator instance
-        _storeMutator: function(mutator) {
-            // Apply mutators when something changes
-            this.listenTo(mutator, 'apply', function(silent) {
-                if (!silent) this.sync();
-            });
-
-            // Stop listening when destroyed
-            this.listenTo(mutator, 'destroy', function() {
-                this.stopListening(mutator);
-                delete this.mutators[mutator.cid];
-                this.sync();
-            });
-
-            this.mutators[mutator.cid] = mutator;
-        },
-
         // Determines if the view is active
-        isActive: function() {
+        // An inactive view does not listen to its parent
+        isActive: function () {
             return !!this._isActive;
         },
 
-        // Deactivates store event listener
-        sleep: function() {
+        // Deactivates event listener
+        sleep: function () {
             this.stopListening(this.parent, this.options.listenTo);
             this._isActive = false;
         },
 
-        // Activates store event listener
-        wakeup: function(sync) {
+        // Activates event listener
+        wakeup: function (sync) {
             this.listenTo(this.parent, this.options.listenTo, this.sync);
             this._isActive = true;
-            if (sync === false) return;
-            this.sync();
+            if (sync) {
+                this.sync();
+            }
+        },
+
+        // Creates and returns a new ViewConfig instance
+        createConfig: function (component, callback) {
+            var config = new ViewConfig(this, component, callback);
+            config.cid = _.uniqueId('config');
+            this._storeConfig(config);
+            return config;
+        },
+
+        // Stores a ViewConfig instance
+        _storeConfig: function (config) {
+            // Apply new configuration when requested
+            this.listenTo(config, 'set', function () {
+                this.sync();
+            });
+
+            // Stop listening when destroyed
+            this.listenTo(config, 'destroy', function () {
+                this.stopListening(config);
+                delete this.configs[config.cid];
+                this.sync();
+            });
+
+            this.configs[config.cid] = config;
         }
     }, Backbone.Events);
 
@@ -277,14 +416,14 @@
         views: {},
 
         // Obtains a view by its name
-        getView: function(name) {
+        getView: function (name) {
             return this.views[name];
         },
 
-        // Returns a default StateView instance for this state
-        getDefaultView: function(options) {
-            if (this.views.default) {
-                return this.views.default;
+        // Returns a default view instance for this state
+        getDefaultView: function (options) {
+            if (this.views['default']) {
+                return this.views['default'];
             }
 
             return this.createView(_.extend(options || {}, {
@@ -294,134 +433,36 @@
     };
 
     //
-    // ViewableStateMixin
-    // ------------------
-    // Mixin for 'viewable' state objects (State and StateView).
-
-    var ViewableStateMixin = {
-        createView: function(options) {
-            options = options || {};
-            var view = new StateView(this, options);
-            view.name = options.name ? options.name : _.uniqueId('view');
-            this.views[view.name] = view;
-
-            // Remove view when destroyed
-            this.listenTo(view, 'destroy', function() {
-                delete this.views[view.name];
-            });
-
-            return view;
-        }
-    };
-
-    _.extend(ViewableStateMixin, ViewableMixin);
-
-    //
     // ViewableStoreMixin
     // ------------------
     // Mixin for 'viewable' store objects (Store and StoreView).
 
     var ViewableStoreMixin = {
         // Generates a new StoreView instance
-        createView: function(options) {
+        createView: function (options) {
             options = options || {};
             // Create view instance
             var view = new StoreView(this, options);
-            view.name = options.name ? options.name : _.uniqueId('view');
+            view.name = options.name || _.uniqueId('view');
             this.views[view.name] = view;
 
             // Remove view when destroyed
-            this.listenTo(view, 'destroy', function() {
+            this.listenTo(view, 'destroy', function () {
                 delete this.views[view.name];
             });
 
             return view;
-        },
+        }
     };
 
     _.extend(ViewableStoreMixin, ViewableMixin);
-
-    //
-    // Prism.StateView
-    // ---------------
-    // A Prism.StateView instance keeps track of a Prism.State object.
-
-    var StateView = Prism.StateView = function(parent, options) {
-        this.parent = parent;
-        this.options = _.extend({}, _.result(this, 'options'), options);
-        this.options.listenTo = this.options.listenTo || 'change';
-        this._isInitialized = false;
-        this._isActive = false;
-
-        this.listenTo(parent, 'start', function() {
-            // Initialize mutators
-            this.trigger('wakeup');
-
-            // Listen for changes
-            this.wakeup(false);
-            this._isInitialized = true;
-            this.sync();
-
-            //Initialize subviews
-            this.trigger('start');
-        });
-
-        this.initialize.apply(this, arguments);
-    };
-
-    // Include additional mixins
-    _.extend(StateView.prototype, ViewBaseMixin, ViewableStateMixin, {
-        initialize: function() {},
-
-        sync: function() {
-            if (!this._isActive) return;
-            this.attributes = this.parent.cid ? _.extend({
-                cid: this.parent.cid
-            }, this.parent.attributes) : _.extend({}, this.parent.attributes);
-            this.trigger('sync');
-        },
-
-        toJSON: function() {
-            return _.extend({
-                cid: this.parent.cid
-            }, this.attributes);
-        },
-
-        destroy: destroy
-    });
-
-    StateView.extend = Backbone.Model.extend;
-
-    //
-    // Prism.State
-    // -----------
-    // The Prism.State class is a Backbone.Model subclass adding 'viewable' behavior.
-
-    Prism.StateMixin = _.extend({
-        constructor: function(attributes, options) {
-            var attrs = attributes || {};
-            options = options || {};
-            this.cid = _.uniqueId('c');
-            this.attributes = {};
-            this.views = {};
-            if (options.collection) this.collection = options.collection;
-            if (options.parse) attrs = this.parse(attrs, options) || {};
-            attrs = _.defaults({}, attrs, _.result(this, 'defaults'));
-            this.set(attrs, options);
-            this.changed = {};
-            this.initialize.apply(this, arguments);
-        }
-    }, BaseMixin, ViewableStateMixin);
-
-    // Build State class
-    Prism.State = Backbone.Model.extend(Prism.StateMixin);
 
     //
     // Prism.StoreView
     // ---------------
     // A Prism.StoreView instance keeps track of a Prism.Store object.
 
-    var StoreView = Prism.StoreView = function(parent, options) {
+    var StoreView = Prism.StoreView = function (parent, options) {
         this.parent = parent;
         this.models = [];
         this.length = 0;
@@ -430,17 +471,19 @@
         this.options.listenTo = this.options.listenTo || 'add remove change reset';
 
         // Initialize with parent store
-        this.listenTo(parent, 'start', function() {
-            // Initialize mutators
-            this.trigger('wakeup');
+        this.listenTo(parent, 'publish', function () {
+            // Initialize configs
+            this.trigger('wakeup', true); // Indicate that this event is the first initialization
 
             // Synchronize models
             this.wakeup(false);
             this._isInitialized = true;
+
+            // Synchronize with parent
             this.sync();
 
             //Initialize sub-views
-            this.trigger('start');
+            this.trigger('publish');
         });
 
         // Initialize instance
@@ -449,11 +492,13 @@
 
     // Include additional mixins
     _.extend(StoreView.prototype, ViewBaseMixin, ViewableStoreMixin, {
-        initialize: function() {},
+        initialize: function () {},
 
         // Synchronizes models against the store
-        sync: function() {
-            if (!this._isActive) return;
+        sync: function () {
+            if (!this._isActive) {
+                return;
+            }
             this.models = _.clone(this.parent.models);
 
             // Apply default filter
@@ -462,7 +507,7 @@
                     this.models = this.filter(this.options.filter);
                 } else if (_.isObject(this.options.filter)) {
                     var matches = _.matches(this.options.filter);
-                    this.models = this.filter(function(model) {
+                    this.models = this.filter(function (model) {
                         return matches(model.attributes);
                     });
                 }
@@ -470,12 +515,12 @@
 
             // Apply additional filters
             if (this.options.filters) {
-                _.each(this.options.filters, (function(filter) {
+                _.each(this.options.filters, (function (filter) {
                     if (_.isFunction(filter)) {
                         this.models = this.filter(filter);
                     } else if (_.isObject()) {
                         var matches = _.matches(filter);
-                        this.models = this.filter(function(model) {
+                        this.models = this.filter(function (model) {
                             return matches(model.attributes);
                         });
                     }
@@ -487,7 +532,7 @@
                 if (_.isString(this.options.comparator) || this.options.comparator.length === 1) {
                     this.models = this.sortBy(this.options.comparator, this);
                 } else {
-                    this.models.sort(_.bind(this.options.comparator, this));
+                    this.models.sort(this.options.comparator.bind(this));
                 }
             }
 
@@ -495,7 +540,7 @@
             if (this.options.size || typeof this.options.offset !== 'undefined') {
                 var length = this.models.length;
                 var size = this.options.size || length;
-                var offset = typeof this.options.offset == 'undefined' ? 0 : Math.abs(this.options.offset);
+                var offset = typeof this.options.offset === 'undefined' ? 0 : Math.abs(this.options.offset);
 
                 if (size > 0) {
                     this.models = this.models.slice(offset, offset + size);
@@ -513,78 +558,79 @@
         },
 
         // Returns a JSON representation of a store
-        toJSON: function() {
-            return this.models.map(function(model) {
+        toJSON: function () {
+            return this.models.map(function (model) {
                 return _.extend({
                     cid: model.cid
                 }, model.toJSON());
             });
         },
 
-        // Return a new ViewFilter instance
-        createFilter: function(callback, context) {
-            var filter = new ViewFilter(this, context, callback);
+        // Creates and returns a new ViewFilter instance
+        createFilter: function (component, callback) {
+            var filter = new ViewFilter(this, component, callback);
             filter.cid = _.uniqueId('filter');
-            this._storeMutator(filter);
+            this._storeConfig(filter);
             return filter;
         },
 
-        // Returns a new ViewComparator instance
-        createComparator: function(callback, context) {
-            var comparator = new ViewComparator(this, context, callback);
+        // Creates and returns a new ViewComparator instance
+        createComparator: function (component, callback) {
+            var comparator = new ViewComparator(this, component, callback);
             comparator.cid = _.uniqueId('comparator');
-            this._storeMutator(comparator);
+            this._storeConfig(comparator);
             return comparator;
+        },
+
+        // Creates and returns a new ViewPaginator instance
+        createPaginator: function (component, pageSize, defaultPage) {
+            var paginator = new ViewPaginator(this, component, pageSize, defaultPage);
+            paginator.cid = _.uniqueId('paginator');
+            this._storeConfig(paginator);
+            return paginator;
         },
 
         destroy: destroy
     });
 
-    // Add additional Underscore.js methods
-    var _methods = ['forEach', 'each', 'map', 'collect', 'reduce',
-        'foldl', 'inject', 'reduceRight', 'foldr', 'find', 'detect', 'filter',
-        'select', 'reject', 'every', 'all', 'some', 'any', 'include', 'includes',
-        'contains', 'invoke', 'max', 'min', 'toArray', 'size', 'first',
-        'head', 'take', 'initial', 'rest', 'tail', 'drop', 'last',
-        'without', 'difference', 'indexOf', 'shuffle', 'lastIndexOf',
-        'isEmpty', 'chain', 'sample', 'partition'
-    ];
-
-    _.each(_methods, function(method) {
-        StoreView.prototype[method] = function() {
-            var args = [].slice.call(arguments);
-            args.unshift(this.models);
-            return _[method].apply(_, args);
-        };
-    });
-
-    _.each(['groupBy', 'countBy', 'sortBy', 'indexBy'], function(method) {
-        StoreView.prototype[method] = function(value, context) {
-            var iterator = _.isFunction(value) ? value : function(model) {
-                return model.get(value);
-            };
-            return _[method](this.models, iterator, context);
-        };
-    });
-
     StoreView.extend = Backbone.Model.extend;
+
+    // Inject Underscore.js methods
+    var collectionMethods = {forEach: 3, each: 3, map: 3, collect: 3, reduce: 0,
+      foldl: 0, inject: 0, reduceRight: 0, foldr: 0, find: 3, detect: 3, filter: 3,
+      select: 3, reject: 3, every: 3, all: 3, some: 3, any: 3, include: 3, includes: 3,
+      contains: 3, invoke: 0, max: 3, min: 3, toArray: 1, size: 1, first: 3,
+      head: 3, take: 3, initial: 3, rest: 3, tail: 3, drop: 3, last: 3,
+      without: 0, difference: 0, indexOf: 3, shuffle: 1, lastIndexOf: 3,
+      isEmpty: 1, chain: 1, sample: 3, partition: 3, groupBy: 3, countBy: 3,
+      sortBy: 3, indexBy: 3, findIndex: 3, findLastIndex: 3};
+
+    addUnderscoreMethods(StoreView, collectionMethods, 'models');
+
+    //
+    // BaseMixin
+    // ---------
+    // BaseMixin implements common logic used by Prism.State and Prism.Store classes.
+
+    var BaseMixin = {
+        _isInitialized: false,
+
+        // Initializes children views
+        publish: function () {
+            this.trigger('publish');
+            this._isInitialized = true;
+        }
+    };
 
     //
     // Prism.Store
     // -----------
-    // The Prism.Store class is a Backbone.Collection subclass adding 'viewable' behavior.
+    // The Prism.Store class is a Backbone.Collection subclass adding a 'viewable' behavior.
 
     Prism.StoreMixin = _.extend({
-        constructor: function(models, options) {
-            options = options || {};
-            if (options.model) this.model = options.model;
-            if (options.comparator) this.comparator = options.comparator;
-            this._reset();
+        constructor: function (models, options) {
             this.views = {};
-            this.initialize.apply(this, arguments);
-            if (models) this.reset(models, _.extend({
-                silent: true
-            }, options));
+            Backbone.Collection.apply(this, arguments);
         }
     }, BaseMixin, ViewableStoreMixin);
 
@@ -592,56 +638,193 @@
     Prism.Store = Backbone.Collection.extend(Prism.StoreMixin);
 
     //
+    // ViewableStateMixin
+    // ------------------
+    // Mixin for 'viewable' state objects (State and StateView).
+
+    var ViewableStateMixin = {
+        createView: function (options) {
+            options = options || {};
+            var view = new StateView(this, options);
+            view.name = options.name ? options.name : _.uniqueId('view');
+            this.views[view.name] = view;
+
+            // Remove view when destroyed
+            this.listenTo(view, 'destroy', function () {
+                delete this.views[view.name];
+            });
+
+            return view;
+        }
+    };
+
+    _.extend(ViewableStateMixin, ViewableMixin);
+
+    //
+    // Prism.StateView
+    // ---------------
+    // A Prism.StateView instance keeps track of a Prism.State object.
+
+    var StateView = Prism.StateView = function (parent, options) {
+        this.parent = parent;
+        this.options = _.extend({}, _.result(this, 'options'), options);
+        this.options.listenTo = this.options.listenTo || 'change';
+        this._isInitialized = false;
+        this._isActive = false;
+
+        this.listenTo(parent, 'publish', function () {
+            // Initialize configs
+            this.trigger('wakeup', true); // Indicate that this event is the first initialization
+
+            // Listen for changes
+            this.wakeup(false);
+            this._isInitialized = true;
+
+            // Synchronize with parent
+            this.sync();
+
+            //Initialize subviews
+            this.trigger('publish');
+        });
+
+        this.initialize.apply(this, arguments);
+    };
+
+    // Include additional mixins
+    _.extend(StateView.prototype, ViewBaseMixin, ViewableStateMixin, {
+        initialize: function () {},
+
+        sync: function () {
+            if (!this._isActive) {
+                return;
+            }
+            this.attributes = this.parent.cid ? _.extend({
+                cid: this.parent.cid
+            }, this.parent.attributes) : _.extend({}, this.parent.attributes);
+            this.trigger('sync');
+        },
+
+        toJSON: function () {
+            return _.extend({
+                cid: this.parent.cid
+            }, this.attributes);
+        },
+
+        destroy: destroy
+    });
+
+    StateView.extend = Backbone.Model.extend;
+
+    // Add Underscore.js methods to StateView class
+    var modelMethods = {keys: 1, values: 1, pairs: 1, invert: 1, pick: 0,
+      omit: 0, chain: 1, isEmpty: 1};
+
+    addUnderscoreMethods(StateView, modelMethods, 'attributes');
+
+    //
+    // Prism.State
+    // -----------
+    // The Prism.State class is a Backbone.Model subclass adding 'viewable' behavior.
+
+    Prism.StateMixin = _.extend({
+        constructor: function (attributes, options) {
+            this.views = {};
+            Backbone.Model.apply(this, arguments);
+        }
+    }, BaseMixin, ViewableStateMixin);
+
+    // Build State class
+    Prism.State = Backbone.Model.extend(Prism.StateMixin);
+
+    // This is the default synchronization callback
+    // This function is executed using the wrapping component as its context
+    // 'view' is the StoreView/StateView instance
+    // 'wrappedClass' is the wrapped component class
+    var defaultSyncCallback = function (view, wrappedClass) {
+        // Call event handling methods (if implemented)
+        // Remember, both 'viewUpdate' and 'viewTransform' act on the wrapper component
+        // Use this.props.$value and this.props.$state in the wrapped component to obtain
+        // any generated value generated in those methods
+        if (_.isFunction(wrappedClass.prototype.viewUpdate)) {
+            // When implemented, invoke the 'viewUpdate' method passing the view instance as the argument
+            // Method should update the component state accordingly or force a re-render
+            wrappedClass.prototype.viewUpdate.call(this, view);
+        } else if (_.isFunction(wrappedClass.prototype.viewTransform)) {
+            // When implemented, invoke the 'viewTransform' method passing the view instance as the argument
+            // Method should return a state object that is then merged
+            this.setState(wrappedClass.prototype.viewTransform.call(this, view));
+        } else {
+            // Default behavior, just force an update
+            this.forceUpdate();
+        }
+    };
+
+    //
     // Prism.compose
     // -------------
     // Returns a Higher-Order Component that wraps the given class.
 
-    //This function implements the default behaviour for 'sync' events triggered on views
-    var defaultOnSync = function(component, view, cclass) {
-        if (_.isFunction(cclass.prototype.transform)) {
-            component.setState(cclass.prototype.transform.call(component, view));
-        } else {
-            component.setState({
-                view: view.toJSON()
-            });
-        }
-    };
-
-    Prism.compose = function(React, Component, onSync) {
+    Prism.compose = function (Component, views, syncCallback) {
         var wrapper = React.createClass({
-            componentWillMount: function() {
-                // Update state when view changes
-                this.listenTo(this.props.view, 'sync', function() {
-                    if (_.isFunction(onSync)) {
-                        onSync(this, this.props.view, Component, arguments);
-                    } else {
-                        defaultOnSync(this, this.props.view, Component);
-                    }
-                });
-            },
-
-            componentWillUnmount: function() {
-                //Stop listening for events
-                this.stopListening(this.props.view, 'sync');
-            },
-
-            render: function() {
+            componentWillMount: function () {
                 var self = this;
-                var props = {
-                    values: function(key) {
-                        if (key !== undefined) {
-                            return self.state[key];
-                        }
 
-                        return self.state ? self.state : {};
+                // Listen to 'sync' events triggered in the view instance
+                if (_.isArray(views)) {
+                    _.each(views, function (view) {
+                        self.listenTo(self.props[view], 'sync',  function () {
+                            if (_.isFunction(syncCallback)) {
+                                syncCallback.call(self, self.props[view], Component);
+                            } else {
+                                defaultSyncCallback.call(self, self.props[view], Component);
+                            }
+                        });
+                    });
+                } else {
+                    this.listenTo(this.props[views], 'sync', function () {
+                        if (_.isFunction(syncCallback)) {
+                            syncCallback.call(self, self.props[views], Component);
+                        } else {
+                            defaultSyncCallback.call(self, self.props[views], Component);
+                        }
+                    });
+                }
+            },
+
+            componentWillUnmount: function () {
+                var self = this;
+                // Stop listening when unmounted
+                if (_.isArray(views)) {
+                    _.each(views, function (view) {
+                        self.stopListening(self.props[view], 'sync');
+                    });
+                } else {
+                    this.stopListening(this.props[views], 'sync');
+                }
+            },
+
+            render: function () {
+                var self = this;
+                // Include additional properties in the wrapped component
+                var props = {
+                    // Obtains a state value in the wrapper component by key
+                    $value: function (key) {
+                        return self.state ? self.state[key] : undefined;
+                    },
+
+                    // Returns the wrapper component state
+                    $state: function () {
+                        return self.state;
+                    },
+
+                    // Returns the wrapper component instance
+                    $parent: function () {
+                        return self;
                     }
                 };
-
-                //Render wrapper component
                 return React.createElement(Component, _.extend(props, this.props));
             }
         });
-
         _.extend(wrapper.prototype, Prism.Events);
         return wrapper;
     };
