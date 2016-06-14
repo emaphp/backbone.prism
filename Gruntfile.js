@@ -10,7 +10,8 @@ module.exports = function(grunt) {
                     'Backbone': true,
                     _: true,
                     'Backbone.Radio': true,
-                    'Flux': true
+                    'Flux': true,
+                    'React': true
                 }
             }
         },
