@@ -6,7 +6,7 @@ describe('Prism.Channel tests', function() {
         expect(Backbone.Prism.Events.stopListening).to.equal(Backbone.Events.stopListening);
         expect(Backbone.Prism.Events.on).to.equal(Backbone.Events.on);
         expect(Backbone.Prism.Events.off).to.equal(Backbone.Events.off);
-		expect(Backbone.Prism.Events.request).to.equal(Backbone.Radio.Requests.request);
+        expect(Backbone.Prism.Events.request).to.equal(Backbone.Radio.Requests.request);
         expect(Backbone.Prism.Events.reply).to.equal(Backbone.Radio.Requests.reply);
     });
 });

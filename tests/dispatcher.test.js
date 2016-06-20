@@ -16,17 +16,15 @@ describe('Prism.Dispatcher tests', function() {
 
         var methodSpy = sinon.spy(methods, 'test-callback');
         dispatcher.register(function(payload) {
-			var action = payload.action;
-			
-			switch (payload.action.type) {
-				case 'test-callback':
-					methods['test-callback']();
-				break
-				
-				default:
-			}
-		});
-        
+            var action = payload.action;
+            switch (payload.action.type) {
+            case 'test-callback':
+                methods['test-callback']();
+				        break;
+            default:
+            }
+        });
+
         dispatcher.handleViewAction({
             type: 'test-callback'
         });

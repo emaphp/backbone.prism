@@ -202,29 +202,29 @@ describe('Prism.StateView tests', function() {
 
         var spy = sinon.spy(listener, 'callback');
         view.on('sync', listener.callback);
-        
+
         store.publish();
         expect(spy.called).to.be.true;
         expect(spy.calledOnce).to.be.true;
         expect(view.models.length).to.equal(2);
-        
+
         store.add({name: 'Gex', specie: 'lizard'});
         expect(spy.calledTwice).to.be.true;
         expect(view.models.length).to.equal(3);
-        
+
         view.sleep();
-        
+
         store.add({name: 'Ed', specie: 'horse'});
         expect(spy.calledThrice).to.be.false,
         expect(view.models.length).to.equal(3);
-        
+
         view.wakeup(true);
         expect(spy.calledThrice).to.be.true;
         expect(view.models.length).to.equal(4);
     });
-    
+
     it('Should return subview instance', function () {
-		var Store = Backbone.Prism.Store.extend({
+        var Store = Backbone.Prism.Store.extend({
             name: 'store'
         });
 
@@ -233,15 +233,15 @@ describe('Prism.StateView tests', function() {
             name: 'test'
         });
         var subview = view.createView({
-			name: 'subview'
-		});
-		
-		expect(subview.parent).to.equal(view);
-		expect(view.views['subview']).to.equal(subview);
-	});
-	
-	it('Should update subview', function () {
-		var Store = Backbone.Prism.Store.extend({
+            name: 'subview'
+        });
+
+        expect(subview.parent).to.equal(view);
+        expect(view.views['subview']).to.equal(subview);
+    });
+
+    it('Should update subview', function () {
+        var Store = Backbone.Prism.Store.extend({
             name: 'store'
         });
 
@@ -250,27 +250,27 @@ describe('Prism.StateView tests', function() {
             name: 'test'
         });
         var subview = view.createView({
-			name: 'subview',
-			listenTo: 'sync'
-		});
-		
-		store.publish();
-		expect(view.length).to.equal(2);
-		expect(subview.length).to.equal(2);
-		
-		store.add({name: 'Truman', specie: 'parrot'});
-		expect(store.length).to.equal(3);
-		expect(view.length).to.equal(3);
-		expect(subview.length).to.equal(3);
-	});
-	
-	it('Should apply view configs', function () {
-		var Store = Backbone.Prism.Store.extend({
+            name: 'subview',
+            listenTo: 'sync'
+        });
+
+        store.publish();
+        expect(view.length).to.equal(2);
+        expect(subview.length).to.equal(2);
+
+        store.add({name: 'Truman', specie: 'parrot'});
+        expect(store.length).to.equal(3);
+        expect(view.length).to.equal(3);
+        expect(subview.length).to.equal(3);
+    });
+
+    it('Should apply view configs', function () {
+        var Store = Backbone.Prism.Store.extend({
             name: 'store'
         });
 
         var store = new Store([
-			{name: 'Ralph', specie: 'dog', age: 3},
+            {name: 'Ralph', specie: 'dog', age: 3},
             {name: 'Lucy', specie: 'cat', age: 5},
             {name: 'Gex', specie: 'lizard', age: 9},
             {name: 'Ed', specie: 'horse', age: 7},
@@ -282,38 +282,75 @@ describe('Prism.StateView tests', function() {
             name: 'test'
         });
         var subview = view.createView({
-			name: 'subview',
-			listenTo: 'sync'
-		});
-		
-		var obj = {
-			configCallback: function () {
-				return {
-					offset: 1,
-					size: 4
-				};
-			}
-		};
-		
-		var viewConfig = view.createConfig(null, obj.configCallback);
-		
-		//
-		var subViewConfig = subview.createConfig(null, function () {
-			return {
-				size: 3
-			};
-		});
-		
-		var subViewComparator = subview.createComparator(null, function () {
-			return function (model1, model2) {
-				return model1.get('age') < model2.get('age') ? 1 : (model1.get('age') > model2.get('age') ? -1 : 0);
-			};
-		});
-		
-		expect(view.configs[viewConfig.cid]).to.equal(viewConfig);
-		store.publish();
-		expect(view.length).to.equal(4);
-		expect(subview.length).to.equal(3);
-		expect(subview.models[0].get('name')).to.equal('Gex');
-	});
+            name: 'subview',
+            listenTo: 'sync'
+        });
+
+        var obj = {
+            configCallback: function () {
+                return {
+                    offset: 1,
+                    size: 4
+                };
+            }
+        };
+
+        var viewConfig = view.createConfig(null, obj.configCallback);
+
+		    var subViewConfig = subview.createConfig(null, function () {
+            return {
+                size: 3
+			      };
+		    });
+
+        var subViewComparator = subview.createComparator(null, function () {
+			      return function (model1, model2) {
+				        return model1.get('age') < model2.get('age') ? 1 : (model1.get('age') > model2.get('age') ? -1 : 0);
+			      };
+		    });
+
+		    expect(view.configs[viewConfig.cid]).to.equal(viewConfig);
+		    store.publish();
+		    expect(view.length).to.equal(4);
+		    expect(subview.length).to.equal(3);
+		    expect(subview.models[0].get('name')).to.equal('Gex');
+	  });
+
+    it('Should paginate view', function () {
+        var Store = Backbone.Prism.Store.extend({
+            name: 'store'
+        });
+
+        var store = new Store([
+            {name: 'Ralph', specie: 'dog', age: 3},
+            {name: 'Lucy', specie: 'cat', age: 5},
+            {name: 'Gex', specie: 'lizard', age: 9},
+            {name: 'Ed', specie: 'horse', age: 7},
+            {name: 'Tom', specie: 'echidna', age: 3},
+            {name: 'Go', specie: 'gopher', age: 2},
+            {name: 'Frank', specie: 'parrot', age: 5}
+        ]);
+        var view = store.createView({
+            name: 'test'
+        });
+
+        var paginator = view.createPaginator(null, 3, 2);
+        paginator.apply();
+        store.publish();
+        expect(view.length).to.equal(3);
+        expect(paginator.getTotalPages(store.length)).to.equal(3);
+        expect(view.models[0].get('name')).to.equal('Ed');
+
+        paginator.setCurrentPage(1, true);
+        expect(paginator.page).to.equal(1);
+        expect(view.length).to.equal(3);
+        expect(view.models[0].get('name')).to.equal('Ralph');
+
+        paginator.setCurrentPage(3, false);
+        expect(paginator.page).to.equal(3);
+        expect(view.length).to.equal(3);
+        paginator.apply();
+        expect(view.length).to.equal(1);
+        expect(view.models[0].get('name')).to.equal('Frank');
+    });
 });

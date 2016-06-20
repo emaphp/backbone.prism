@@ -23,7 +23,7 @@ module.exports = function(config) {
         'dist/backbone.prism.js',
         'tests/*.test.js',
     ],
-    
+
     'plugins' : [
 		'karma-mocha',
 		'karma-chai',

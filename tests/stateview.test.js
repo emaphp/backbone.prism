@@ -94,7 +94,7 @@ describe('Prism.StateView tests', function() {
         expect(spy.called).to.be.true;
         expect(view.options.display).to.equal('align-right');
     });
-    
+
     it('Should update subview', function () {
         var State = Backbone.Prism.State.extend({
             name: 'state'
@@ -108,7 +108,7 @@ describe('Prism.StateView tests', function() {
 			name: 'subview',
 			listenTo: 'sync'
 		});
-		
+
 		state.publish();
 		expect(view.attributes.name).to.equal('emaphp');
 		expect(view.attributes.cid).to.equal(state.cid);
