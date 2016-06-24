@@ -1,5 +1,5 @@
 //
-// Backbone.Prism - v1.3.0
+// Backbone.Prism - v1.3.1
 // ------------------------
 // Flux-like architecture for Backbone.js
 // Copyright 2015 - 2016 Emmanuel Antico
@@ -20,7 +20,7 @@
 }(this, function (global, Backbone, _, React, Flux) {
     'use strict';
     var Prism = Backbone.Prism = Backbone.Prism || {};
-    Prism.VERSION = '1.3.0';
+    Prism.VERSION = '1.3.1';
     Prism.extend = Backbone.Model.extend;
 
     //
@@ -106,7 +106,7 @@
                 return _[method](this[attribute], cb(iteratee, this), defaultVal, context);
             };
             default: return function () {
-                var args = slice.call(arguments);
+                var args = Array.prototype.slice.call(arguments);
                 args.unshift(this[attribute]);
                 return _[method].apply(_, args);
             };
