@@ -88,7 +88,8 @@ When a `Store` instance calls the `publish` method, all `store views` will start
 ```javascript
 // Adding an element to a store will trigger an event
 store.add({
-  { name: 'Arc de Triomphe', location: 'France' }
+  name: 'Arc de Triomphe',
+  location: 'France'
 });
 
 // Views will listen for these types of event and sync their data again
