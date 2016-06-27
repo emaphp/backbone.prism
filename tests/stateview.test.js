@@ -105,14 +105,83 @@ describe('Prism.StateView tests', function() {
             name: 'view'
         });
         var subview = view.createView({
-			name: 'subview',
-			listenTo: 'sync'
-		});
+			      name: 'subview',
+			      listenTo: 'sync'
+		    });
 
-		state.publish();
-		expect(view.attributes.name).to.equal('emaphp');
-		expect(view.attributes.cid).to.equal(state.cid);
-		expect(subview.attributes.name).to.equal('emaphp');
-		expect(subview.attributes.cid).to.equal(view.attributes.cid);
-	});
+
+		    state.publish();
+		    expect(view.attributes.name).to.equal('emaphp');
+		    expect(view.attributes.cid).to.equal(state.cid);
+		    expect(subview.attributes.name).to.equal('emaphp');
+		    expect(subview.attributes.cid).to.equal(view.attributes.cid);
+	  });
+
+    it('Should implement underscore.js methods', function () {
+        var State = Backbone.Prism.State.extend({
+            name: 'state'
+        });
+
+        var state = new State({name: 'emaphp', role: 'developer'});
+        var view = state.createView({
+            name: 'test'
+        });
+        state.publish();
+
+        // keys
+        expect(view.keys).to.exists;
+        expect(typeof view.keys).to.equal('function');
+        var result = view.keys();
+        expect(result.length).to.equal(3);
+
+        // values
+        expect(view.values).to.exists;
+        expect(typeof view.values).to.equal('function');
+        var result = view.values();
+        expect(result.length).to.equal(3);
+
+        // pairs
+        expect(view.pairs).to.exists;
+        expect(typeof view.pairs).to.equal('function');
+        var result = view.pairs();
+        expect(result.length).to.equal(3);
+
+        // invert
+        expect(view.invert).to.exists;
+        expect(typeof view.invert).to.equal('function');
+        var result = view.invert();
+        expect(result.emaphp).to.exists;
+        expect(result.emaphp).to.equal('name');
+        expect(result.developer).to.exists;
+        expect(result.developer).to.equal('role');
+
+        // pick
+        expect(view.pick).to.exists;
+        expect(typeof view.pick).to.equal('function');
+        var result = view.pick('role');
+        expect(result.role).to.exists;
+        expect(result.name).to.be.undefined;
+        expect(result.role).to.equal('developer');
+
+        // omit
+        expect(view.omit).to.exists;
+        expect(typeof view.omit).to.equal('function');
+        var result = view.omit('role');
+        expect(result.role).to.be.undefined;
+        expect(result.name).to.exists;
+        expect(result.name).to.equal('emaphp');
+
+        // chain
+        expect(view.chain).to.exists;
+        expect(typeof view.chain).to.equal('function');
+        var result = view.chain().pick('role').value();
+        expect(result.role).to.exists;
+        expect(result.name).to.be.undefined;
+        expect(result.role).to.equal('developer');
+
+        // isEmpty
+        expect(view.isEmpty).to.exists;
+        expect(typeof view.isEmpty).to.equal('function');
+        expect(view.isEmpty()).to.be.false;
+    });
 });
