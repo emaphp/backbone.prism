@@ -80,7 +80,7 @@ A full explanation of how `Higher-Order Components` really work would take a lot
 Prism generates this type of component through the `compose` function. This function takes a component class and a list of props that will contain `model views`. The resulting component will listen for changes in the specified props. When a change is detected the component will re-render.
 
 ```javascript
-// file: MyComponent.jsx
+// file: MyComponent.js
 import React from 'react';
 import Prism from 'backbone.prism';
 
@@ -95,10 +95,10 @@ export default Prism.compose(MyComponent, ['view']);
 This simplifies the process of binding a component to a view. In order to use this component we need to provide a valid `model view` as the `view` prop.
 
 ```javascript
-// file: MainComponent.jsx
+// file: MainComponent.js
 import React from 'react';
 import store from './store';
-import MyComponent from './MyComponent.jsx';
+import MyComponent from './MyComponent.js';
 
 class MainComponent extends React.Component {
   componentWillMount() {
@@ -148,10 +148,10 @@ export default store;
 The first component will represent the app itself. It will be responsible of generating a default view for the list component.
 
 ```javascript
-// file: DemoApp.jsx
+// file: DemoApp.js
 import React from 'react';
 import store from './demostore';
-import LandmarkList from './LandmarkList.jsx';
+import LandmarkList from './LandmarkList.js';
 
 class DemoApp extends React.Component {
   componentWillMount() {
@@ -180,7 +180,7 @@ export default DemoApp;
 The `LandmarkList` component needs to listen to the `view` prop. Any change in that prop (or its parent store) should trigger a re-render.
 
 ```javascript
-// file: LandmarkList.jsx
+// file: LandmarkList.js
 import React from 'react';
 import Prism from 'backbone.prism';
 
@@ -203,7 +203,7 @@ Finally, we render our app using `react-dom`.
 ```javascript
 import React from 'react';
 import ReactDOM from 'react-dom';
-import DemoApp from './DemoApp.jsx';
+import DemoApp from './DemoApp.js';
 
 ReactDOM.render(<DemoApp />, document.getElementById('app'));
 ```
@@ -215,7 +215,7 @@ This application must be bundled using Browserify or Webpack combined with Babel
 In a real world application you might have to fetch data from the server, meaning that the component will be rendered before any data is ready. We can check if a given view is properly initialized with the `isInitialized` method. That way we can provide a meaningful message to alert that no data is available at the moment.
 
 ```javascript
-// file: LandmarkList.jsx
+// file: LandmarkList.js
 import React from 'react';
 import Prism from 'backbone.prism';
 
@@ -424,7 +424,7 @@ export default ListOrderSelector;
 Paginators offers a simple way of separating a big list of elements into smaller sets. We begin by calling the `createPaginator` method passing the component instance, the page size and the initial page. Once done, we simply update the page number through `setPage` and apply the new configuration. Keep in mind that pagination components still need to listen for changes in the view that contains the elements we want to paginate. These kind of components are an example of components that listen to a view but apply modifications to another.
 
 ```javascript
-// file: ListPaginator.jsx
+// file: ListPaginator.js
 import React from 'react';
 import Prism from 'backbone.prism';
 import _ from 'underscore';
@@ -477,12 +477,12 @@ export default Prism.compose(ListPaginationBar, ['view']);
 Now we need to update the way views are managed in the main component. We add a new paginated view that will listen for changes in the default view. Notice that this view will need to listen for a different type of event (`sync`). These types of view are called `subviews`.
 
 ```javascript
-// file: DemoApp.jsx
+// file: DemoApp.js
 import React from 'react';
 import store from './demostore';
-import LandmarkList from './LandmarkList.jsx';
-import ListOrderSelector from './ListOrderSelector.jsx';
-import ListPaginationBar from './ListPaginationBar.jsx';
+import LandmarkList from './LandmarkList.js';
+import ListOrderSelector from './ListOrderSelector.js';
+import ListPaginationBar from './ListPaginationBar.js';
 
 class DemoApp extends React.Component {
   componentWillMount() {
@@ -521,7 +521,7 @@ export default DemoApp;
 Filters are pretty straightforward. This time we invoke the `createFilter` method passing a context object and a callback. Callbacks can return either a filter function or an object setting a specific criteria. This example sets a filter combining regex matching and the [debounce](http://underscorejs.org/#debounce) function utility.
 
 ```javascript
-// file: ListFilter.jsx
+// file: ListFilter.js
 import React from 'react';
 import Prism from 'backbone.prism';
 import _ from 'underscore';
@@ -577,11 +577,11 @@ But now our app has a flaw. If you navigate to the last page and then input a le
 *Prism* includes [Backbone.Radio](https://github.com/marionettejs/backbone.radio "") (an extension mantained by the [Marionette.js](http://marionettejs.com/ "") team) and introduces the `Prism.Channel` class, a class featuring a full messaging API that can be used to communicate state between components. This example shows the implementation of a component using a channel to synchronize their state.
 
 ```javascript
-// file: ChannelComponent.jsx
+// file: ChannelComponent.js
 import React from 'react';
 import Prism from 'backbone.prism';
-import EmitterComponent from './EmitterComponent.jsx';
-import ListenerComponent from './ListenerComponent.jsx';
+import EmitterComponent from './EmitterComponent.js';
+import ListenerComponent from './ListenerComponent.js';
 
 class ChannelComponent extends React.Component {
     componentWillMount() {
@@ -610,7 +610,7 @@ Whenever a new state is applied, we communicate it to the listener component. In
 
 
 ```javascript
-// file: EmitterComponent.jsx
+// file: EmitterComponent.js
 import React from 'react';
 
 class EmitterComponent extends React.Component {
@@ -642,7 +642,7 @@ export default EmitterComponent;
 The listener component defines a receiver callback using the `on` method. Notice that we're also using `request` and `reply` to initialize both components.
 
 ```javascript
-// file: ListenerComponent.jsx
+// file: ListenerComponent.js
 import React from 'react';
 
 class ListenerComponent extends React.Component {
@@ -673,13 +673,13 @@ export default ListenerComponent;
 Let's go back to our demo app. We're goig to add a channel to the main component so both the pagination component and the filter can communicate efficiently.
 
 ```javascript
-// file: DemoApp.jsx
+// file: DemoApp.js
 import React from 'react';
 import store from './demostore';
-import LandmarkList from './LandmarkList.jsx';
-import ListOrderSelector from './ListOrderSelector.jsx';
-import ListPaginationBar from './ListPaginationBar.jsx';
-import ListFilter from './ListFilter.jsx';
+import LandmarkList from './LandmarkList.js';
+import ListOrderSelector from './ListOrderSelector.js';
+import ListPaginationBar from './ListPaginationBar.js';
+import ListFilter from './ListFilter.js';
 
 class DemoApp extends React.Component {
   componentWillMount() {
