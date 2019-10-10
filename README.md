@@ -1,61 +1,37 @@
-Backbone.Prism
-=
+# Backbone.Prism
 
 [![Build Status](https://travis-ci.org/emaphp/backbone.prism.svg?branch=master)](https://travis-ci.org/emaphp/backbone.prism)
 
 Flux architecture for Backbone.js
 
-<br>
-About
-===
+## About
 
 Backbone.Prism features a [Flux](https://facebook.github.io/flux/ "") based architecture combining [Backbone.js](http://backbonejs.org/ "") and [React](https://facebook.github.io/react/ "").
 
-<br>
-Demo
-===
+## Demo
 
-<br>
 ([Backbone-Prism-Todos](https://backbone-prism-todos.herokuapp.com "")): A classic Todo app featuring filters, sorting and pagination, done in Backbone.Prism.
 
-<br>
-Installation
-===
+## Installation
 
-<br>
-Bower
-======
+```
+npm install backbone.prism --save
+```
 
-> bower install backbone.prism --save
+## Introduction
 
-<br>
-npm
-=====
-
-> npm install backbone.prism --save
-
-<br>
-Introduction
-===
-
-<br>
 Backbone.Prism is a Backbone.js library that features a set of classes and utilities for implementing applications using the `Flux` architecture. This library includes:
 
-<br>
  * A `Store` and a `State` class, based on `Backbone.Collection` and `Backbone.Model` respectively.
  * A `Dispatcher` class based on `Flux.Dispatcher`.
  * A `StoreView` and a `StateView` class, both defining an interface for `viewable models`.
  * An utility function for generating *Higher-Order Components* in `React`.
  * A `Channel` class for allowing communication between components.
 
-<br>
-Viewable Models
-====
+### Viewable Models
 
-<br>
 Prism introduces the concept of `viewable model`. A `Store` instance, for example, is a viewable collection, meaning that it can have many `store views` associated. These `model views` represent a particular set of data present in a model and the way it should be rendered. The concept is pretty similar to the one found in RDBMS, where a `view` is a result set returned by a query.
 
-<br>
 ```javascript
 import Prism from 'backbone.prism';
 
@@ -81,10 +57,8 @@ store.publish();
 console.log(view.length); // prints '2'
 ```
 
-<br>
 When a `Store` instance calls the `publish` method, all `store views` will start listening for changes. Any element added/removed/modified on the store will trigger a sync routine.
 
-<br>
 ```javascript
 // Adding an element to a store will trigger an event
 store.add({
@@ -96,21 +70,15 @@ store.add({
 console.log(view.length); // prints '3'
 ```
 
-<br>
 The real advantage of using `model views` is that they can also hold a list of options describing how a model should be rendered. Before showing how this process works, lets first introduce the concept of `Higher-Order Component`. This section assumes you are familiar with `React` and how to render a `React Component`.
 
-<br>
-Higher-Order Components
-====
+### Higher-Order Components
 
-<br>
 The idea behind using `Higher-Order Components` is replacing the use of mixins by wrapping a user-defined component into another. This wrapping component is generated through a function that takes a component class and returns a wrapper. That way, instead of using mixins that end up cluttering our component, we manage a particular logic in the wrapper component and let it decide how its child component should be rendered.
 A full explanation of how `Higher-Order Components` really work would take a lot of space. If you want to now more about **Higher-Order Components** check out this [post](https://medium.com/@dan_abramov/mixins-are-dead-long-live-higher-order-components-94a0d2f9e750 "") written by Dan Abramov.
 
-<br>
 Prism generates this type of component through the `compose` function. This function takes a component class and a list of props that will contain `model views`. The resulting component will listen for changes in the specified props. When a change is detected the component will re-render.
 
-<br>
 ```javascript
 // file: MyComponent.jsx
 import React from 'react';
@@ -124,10 +92,8 @@ class MyComponent extends React.Component {
 export default Prism.compose(MyComponent, ['view']);
 ```
 
-<br>
 This simplifies the process of binding a component to a view. In order to use this component we need to provide a valid `model view` as the `view` prop.
 
-<br>
 ```javascript
 // file: MainComponent.jsx
 import React from 'react';
@@ -157,17 +123,12 @@ class MainComponent extends React.Component {
 export default MainComponent;
 ```
 
-<br>
 The next section illustrates this concept by building a simple list app.
 
-<br>
-A demo app in Backbone.Prism
-===
+## Demo app
 
-<br>
 This app will show a list of landmarks using a `Store` and two `React` components. Lets create the list of landmarks using a simple `Store`:
 
-<br>
 ```javascript
 // file: demostore.js
 import Prism from 'backbone.prism';
@@ -184,10 +145,8 @@ let store = new Prism.Store([
 export default store;
 ```
 
-<br>
 The first component will represent the app itself. It will be responsible of generating a default view for the list component.
 
-<br>
 ```javascript
 // file: DemoApp.jsx
 import React from 'react';
@@ -218,10 +177,8 @@ class DemoApp extends React.Component {
 export default DemoApp;
 ```
 
-<br>
 The `LandmarkList` component needs to listen to the `view` prop. Any change in that prop (or its parent store) should trigger a re-render.
 
-<br>
 ```javascript
 // file: LandmarkList.jsx
 import React from 'react';
@@ -241,10 +198,8 @@ class LandmarkList extends React.Component {
 export default Prism.compose(LandmarkList, ['view']);
 ```
 
-<br>
 Finally, we render our app using `react-dom`.
 
-<br>
 ```javascript
 import React from 'react';
 import ReactDOM from 'react-dom';
@@ -253,17 +208,12 @@ import DemoApp from './DemoApp.jsx';
 ReactDOM.render(<DemoApp />, document.getElementById('app'));
 ```
 
-<br>
 This application must be bundled using Browserify or Webpack combined with Babel. For the sake of brevity we're going to omit this step.
 
-<br>
-Improving initialization
-====
+### Improving initialization
 
-<br>
 In a real world application you might have to fetch data from the server, meaning that the component will be rendered before any data is ready. We can check if a given view is properly initialized with the `isInitialized` method. That way we can provide a meaningful message to alert that no data is available at the moment.
 
-<br>
 ```javascript
 // file: LandmarkList.jsx
 import React from 'react';
@@ -288,27 +238,20 @@ class LandmarkList extends React.Component {
 export default Prism.compose(LandmarkList, ['view']);
 ```
 
-<br>
 We can simulate this process by delaying the call to `publish` in the main component.
 
-<br>
 ```javascript
   componentDidMount() {
     setTimeout(() => store.publish(), 3000);
   }
 ```
 
-<br>
 Now the component will show a little message before rendering the list.
 
-<br>
-Working with views
-===
+### Working with views
 
-<br>
 The simplest way of creating a view is through the `getDefaultView` method.
 
-<br>
 ```javascript
 import store from './store';
 
@@ -316,24 +259,18 @@ let view = store.getDefaultView();
 view.name === 'default'; // true
 ```
 
-<br>
 Both this method and `createView` accept an object containing a set of options. This object can contain the following properties:
 
-<br>
  * name: A name that identifies this view. You can obtain a view by name through the `getView` method.
  * comparator: A function or property name used to sort the collection.
  * filter: A function used for filtering models in a collection.
  * size: The amount of elements to hold.
  * offset: The amount of elements to omit from the beginning.
  
-<br>
-View configuration
-====
+### View configuration
 
-<br>
 Views provide an easy mechanism for changing configuration options through `configs`. A `ViewConfig` object sets a particular list of options in a view and then notifies the view through an event (the `set` event). The next example implements a component that defines the amount of elements to show on a list.
 
-<br>
 ```javascript
 import React from 'react';
 
@@ -351,10 +288,8 @@ class ListSizeSelector extends React.Component {
 export default ListSizeSelector;
 ```
 
-<br>
 This component will store the amount of elements to show in a state var. We'll initialize the `ViewConfig` element in the `componentWillMount` method.
 
-<br>
 ```javascript
   componentWillMount() {
     this.config = this.view.createConfig(this, () => {
@@ -369,10 +304,8 @@ This component will store the amount of elements to show in a state var. We'll i
   }
 ```
 
-<br>
 The `createConfig` method expects a context object, generally the component itself, and a configuration callback. This callback gets invoked after calling the `apply` method and uses the context provided during the initialization. The configuration object returned by this callback is then merged against the view configuration. We need to make sure we destroy the configuration object once the component is unmounted.
 
-<br>
 ```javascript
   render() {
     let options = [3, 5, 10];
@@ -384,10 +317,8 @@ The `createConfig` method expects a context object, generally the component itse
   }
 ```
 
-<br>
 The handler gets the selected value and updates the component state. We provide an additional callback that updates the view.
 
-<br>
 ```javascript
   onOptionChange(e) {
     let self = this;
@@ -398,10 +329,8 @@ The handler gets the selected value and updates the component state. We provide 
   }
 ```
 
-<br>
 A more elegant version of the above could be achieved using the `eval` method. This methods returns a callback that applies the new configuration.
 
-<br>
 ```javascript
   onOptionChange(e) {
     let value = +e.target.value;
@@ -409,17 +338,12 @@ A more elegant version of the above could be achieved using the `eval` method. T
   }
 ```
 
-<br>
 Once the configuration is applied the view triggers an event that notifies all listening components that a change has been made.
 
-<br>
-Comparators
-====
+## Comparators
 
-<br>
 A comparator simply applies a sort algorithm to a collection. This is done by calling the `createComparator` method and specifying a callback that returns either a field name or a sorting function.
 
-<br>
 ```javascript
 import React from 'react';
 
@@ -494,14 +418,11 @@ class ListOrderSelector extends React.Component {
 
 export default ListOrderSelector;
 ```
-<br>
-Paginators
-====
 
-<br>
+## Paginators
+
 Paginators offers a simple way of separating a big list of elements into smaller sets. We begin by calling the `createPaginator` method passing the component instance, the page size and the initial page. Once done, we simply update the page number through `setPage` and apply the new configuration. Keep in mind that pagination components still need to listen for changes in the view that contains the elements we want to paginate. These kind of components are an example of components that listen to a view but apply modifications to another.
 
-<br>
 ```javascript
 // file: ListPaginator.jsx
 import React from 'react';
@@ -553,10 +474,8 @@ class ListPaginationBar extends React.Component {
 export default Prism.compose(ListPaginationBar, ['view']);
 ```
 
-<br>
 Now we need to update the way views are managed in the main component. We add a new paginated view that will listen for changes in the default view. Notice that this view will need to listen for a different type of event (`sync`). These types of view are called `subviews`.
 
-<br>
 ```javascript
 // file: DemoApp.jsx
 import React from 'react';
@@ -597,14 +516,10 @@ class DemoApp extends React.Component {
 export default DemoApp;
 ```
 
-<br>
-Filters
-====
+## Filters
 
-<br>
 Filters are pretty straightforward. This time we invoke the `createFilter` method passing a context object and a callback. Callbacks can return either a filter function or an object setting a specific criteria. This example sets a filter combining regex matching and the [debounce](http://underscorejs.org/#debounce) function utility.
 
-<br>
 ```javascript
 // file: ListFilter.jsx
 import React from 'react';
@@ -652,21 +567,15 @@ class ListFilter extends React.Component {
 export default ListFilter;
 ```
 
-<br>
 But now our app has a flaw. If you navigate to the last page and then input a letter in our newly created filter we obtain an empty list. This is because the view is still using the offset applied through the pagination component. What we obtain is an `out of bounds view`. To solve this issue we're going to introduce `Channels` and then add a mechanism so the page is set to 1 after an input event.
 
 
-<br>
-Channels
-===
+## Channels
 
-<br>
 > *Don't communicate by sharing state. Share state by communicating.*
 
-<br>
 *Prism* includes [Backbone.Radio](https://github.com/marionettejs/backbone.radio "") (an extension mantained by the [Marionette.js](http://marionettejs.com/ "") team) and introduces the `Prism.Channel` class, a class featuring a full messaging API that can be used to communicate state between components. This example shows the implementation of a component using a channel to synchronize their state.
 
-<br>
 ```javascript
 // file: ChannelComponent.jsx
 import React from 'react';
@@ -697,11 +606,9 @@ class ChannelComponent extends React.Component {
 export default MainComponent;
 ```
 
-<br>
 Whenever a new state is applied, we communicate it to the listener component. In this case we use the `trigger` method to send the amount of clicks registered.
 
 
-<br>
 ```javascript
 // file: EmitterComponent.jsx
 import React from 'react';
@@ -732,10 +639,8 @@ class EmitterComponent extends React.Component {
 export default EmitterComponent;
 ```
 
-<br>
 The listener component defines a receiver callback using the `on` method. Notice that we're also using `request` and `reply` to initialize both components.
 
-<br>
 ```javascript
 // file: ListenerComponent.jsx
 import React from 'react';
@@ -763,14 +668,10 @@ class ListenerComponent extends React.Component {
 export default ListenerComponent;
 ```
 
-<br>
-Communicating between components
-====
+### Communicating between components
 
-<br>
 Let's go back to our demo app. We're goig to add a channel to the main component so both the pagination component and the filter can communicate efficiently.
 
-<br>
 ```javascript
 // file: DemoApp.jsx
 import React from 'react';
@@ -816,10 +717,8 @@ class DemoApp extends React.Component {
 export default DemoApp;
 ```
 
-<br>
 Every time the filter receives an input we trigger a `page:reset` event. We make the first modification in `ListFilter`.
 
-<br>
 ```javascript
   componentWillMount() {
     // Initialize filter
@@ -837,10 +736,8 @@ Every time the filter receives an input we trigger a `page:reset` event. We make
   }
 ```
 
-<br>
 The `ListPaginationBar` component will listen to this event and update accordingly.
 
-<br>
 ```javascript
   componentWillMount() {
     // Setup pagination
@@ -854,21 +751,14 @@ The `ListPaginationBar` component will listen to this event and update according
   }
 ```
 
-<br>
-View event handlers
-===
+## View event handlers
 
-<br>
 By default, classes generated with `Prism.compose` will force a re-render when the view updates. This is done by calling the `forceUpdate` method in the wrapping component. Prism offers an alternative mechanism: by defining some special methods in the wrapped component class we can execute a custom logic when a view is updated. Keep in mind that these methods are executed using the parent component as their context.
 
-<br>
-viewUpdate
-====
+### viewUpdate
 
-<br>
 The `viewUpdate` method is called when something in the view changes. This method receives the view instance as an argument.
 
-<br>
 ```javascript
   viewUpdate(view) {
     console.log('View' + view.name + 'update. Setting state...');
@@ -878,10 +768,8 @@ The `viewUpdate` method is called when something in the view changes. This metho
   }
 ```
 
-<br>
 In order to obtain a parent state var we'll use the `$value` method available in the props object.
 
-<br>
 ```javascript
   render() {
     let lastUpdate = this.props.$value('lastUpdate');
@@ -889,14 +777,10 @@ In order to obtain a parent state var we'll use the `$value` method available in
   }
 ```
 
-<br>
-viewTransform
-====
+### viewTransform
 
-<br>
 The `viewTransform` method provides a more straightforward way to set the component state. It must return an object containing the parent state vars, which are later merged in the wrapper component. Again, it will receive the view instance as its only argument.
 
-<br>
 ```javascript
   viewTransform(view) {
     return {
@@ -909,18 +793,12 @@ The `viewTransform` method provides a more straightforward way to set the compon
   }
 ```
 
-<br>
-Flux by example
-===
+## Flux by example
 
-<br>
-Stores
-=====
+### Stores
 
-<br>
 According to the designers of *Flux*, a store *"contains the application state and logic"*. This same approach is implemented through the `Prism.Store` class, which extends `Backbone.Collection`.
 
-<br>
 ```javascript
 import {Model} from 'backbone';
 import {Store} from 'backbone.prism';
@@ -935,10 +813,8 @@ let TaskStore = Store.extend({
 });
 ```
 
-<br>
 Alternatively, you could use the `Prism.State` class, a `viewable model` based on `Backbone.Model`.
 
-<br>
 ```javascript
 import {State} from 'backbone.prism';
 
@@ -947,14 +823,10 @@ let Profile = State.extend({
 });
 ```
 
-<br>
-Dispatcher
-=====
+### Dispatcher
 
-<br>
 The `Prism.Dispatcher` class doesn't add much to the original *Flux* dispatcher except for a few methods like `handleViewAction` and `handleServerAction`.
 
-<br>
 ```javascript
 // file: dispatcher.js
 import {Dispatcher} from 'backbone.prism';
@@ -963,7 +835,6 @@ export default new Dispatcher();
 
 Stores need to register their list of actions through the dispatcher. This example shows a simple approach for registering actions for a task store.
 
-<br>
 ```javascript
 // File: store.js
 import {Model} from 'backbone';
@@ -1002,10 +873,8 @@ store.dispatchToken = dispatcher.register(payload => {
 export default store;
 ```
 
-<br>
 Finally, we define a simple interface for these actions.
 
-<br>
 ```javascript
 // File: actions.js
 import dispatcher from './dispatcher';
@@ -1023,9 +892,6 @@ export default TaskActions;
 ```
 
 
-<br>
-License
-===
+## License
 
-<br>
 This library is distributed under the terms of the MIT license.
